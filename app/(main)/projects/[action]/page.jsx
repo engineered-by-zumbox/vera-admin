@@ -1,11 +1,15 @@
-import React from 'react'
+import Header from "@/components/Sections/Header";
 
-const ProjectActionPage = () => {
+const ProjectActionPage = async ({ params }) => {
+  const { action } = await params;
   return (
-    <div>
-      
-    </div>
-  )
-}
+    <main className="adminContainer">
+      <Header
+        title={action === "create" ? "Add Project" : "Edit Project"}
+      />
+      {/* <UploadNewsletterForm action={action} /> */}
+    </main>
+  );
+};
 
-export default ProjectActionPage
+export default ProjectActionPage;

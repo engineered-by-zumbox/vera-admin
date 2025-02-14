@@ -27,7 +27,7 @@ const AdminNewsLetter = () => {
         </Link>
       </div>
       <AdminSectionCard title="All Newsletters" style2={true}>
-        <div className="mt-10 grid grid-cols-3 gap-4">
+        <div className="mt-10 grid grid-cols-3 gap-4 gap-y-10">
           {[0, 0, 0, 0].map((_, i) => (
             <NewsletterCard key={i} />
           ))}
