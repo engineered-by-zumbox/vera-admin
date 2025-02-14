@@ -8,10 +8,22 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+        primary: {
+          100: "#EDC759",
+          200: "#F6F0E7",
+          300: "#FFF8F1",
+          DEFAULT: "#DFB146",
+        },
+        myGray: {
+          100: "#959089",
+          200: "#CCC6BE",
+          300: "#E8E1D9",
+          400: "#767471",
+          500: "#666666",
+          DEFAULT: "#7B7670",
+        },
       },
     },
   },
-  plugins: [],
+  plugins: [require("tailwindcss-animate")],
 };
