@@ -7,7 +7,9 @@ import Link from "next/link";
 
 const UploadNewsletterForm = ({ id, action }) => {
   const fileInputRef = useRef();
+  const dropZoneRef = useRef();
   const [isDragging, setIsDragging] = useState(false);
+  let dragCounter = 0; // Add counter to track drag events
 
   const {
     formData,
@@ -43,24 +45,34 @@ const UploadNewsletterForm = ({ id, action }) => {
   const handleDragEnter = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragging(true);
+    dragCounter++;
+    if (e.target === dropZoneRef.current) {
+      setIsDragging(true);
+    }
   };
 
   const handleDragLeave = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragging(false);
+    dragCounter--;
+    if (dragCounter === 0) {
+      setIsDragging(false);
+    }
   };
 
   const handleDragOver = (e) => {
     e.preventDefault();
     e.stopPropagation();
+    if (e.target === dropZoneRef.current) {
+      setIsDragging(true);
+    }
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
+    dragCounter = 0;
 
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
@@ -96,7 +108,9 @@ const UploadNewsletterForm = ({ id, action }) => {
         </p>
 
         <div
-          className={`h-[253px] rounded-2xl myFlex mt-10 justify-center bg-white transition-colors
+          ref={dropZoneRef}
+          onClick={handleButtonClick}
+          className={`h-[253px] rounded-2xl cursor-pointer myFlex mt-10 justify-center bg-white transition-colors
             ${
               isDragging
                 ? "border-2 border-dashed border-primary bg-primary/5"
@@ -119,7 +133,7 @@ const UploadNewsletterForm = ({ id, action }) => {
                 className="rounded-lg w-fit h-[230px] object-contain"
               />
               <button
-                onClick={handleDeleteImage}
+                onClick={() => handleDeleteImage(null, "single")}
                 type="button"
                 className="absolute -right-2 -top-2 border text-red-500 bg-white rounded-full p-1"
               >
@@ -127,15 +141,12 @@ const UploadNewsletterForm = ({ id, action }) => {
               </button>
             </div>
           ) : (
-            <div
-              onClick={handleButtonClick}
-              className="myFlex flex-col cursor-pointer gap-2"
-            >
+            <div className="myFlex flex-col cursor-pointer gap-2">
               <input
                 type="file"
                 accept="image/*"
                 ref={fileInputRef}
-                onChange={handleImageChange}
+                onChange={(e) => handleImageChange(e, "single")}
                 className="hidden"
               />
               <div className="myFlex gap-3 px-4 py-3 rounded-lg myShadow">
