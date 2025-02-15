@@ -20,7 +20,7 @@ const ForgottenPasswordForm = () => {
       </div>
       <button
         type="submit"
-        className="bg-primary text-white rounded-2xl h-[48px] mt-3"
+        className="btn !rounded-2xl mt-3"
       >
         Reset Password
       </button>

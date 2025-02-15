@@ -11,10 +11,7 @@ const ForgottenPasswordPage = () => {
         desc="Enter your email address to receive a link to reset your password."
       />
       <ForgottenPasswordForm />
-      <Link
-        href="/admin/signIn"
-        className="myFlex gap-2 text-black/70 w-fit mx-auto"
-      >
+      <Link href="/signIn" className="myFlex gap-2 text-black/70 w-fit mx-auto">
         <ArrowLeft size={16} />
         Back to log in
       </Link>

@@ -61,7 +61,7 @@ const SignInForm = () => {
       </div>
       <div className="myFlex justify-end">
         <Link
-          href="/admin/forgotten-password"
+          href="/forgotten-password"
           className="text-sm text-red-500 w-fit text-right hover:underline"
         >
           Forgot password?
@@ -70,7 +70,7 @@ const SignInForm = () => {
 
       <button
         type="submit"
-        className="bg-primary text-white rounded-2xl h-[48px] mt-3"
+        className="!rounded-2xl btn mt-3"
       >
         Login
       </button>
