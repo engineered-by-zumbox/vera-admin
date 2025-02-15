@@ -29,94 +29,142 @@ const useFormSubmission = (config) => {
     }));
   };
 
-  // Handle file changes (for images)
-  const handleImageChange = (e) => {
+  // Handle single image change (without caption)
+  const handleSingleImageChange = (e) => {
     const file = e.target.files?.[0];
-    if (file && file.type.startsWith("image/")) {
+    if (file) {
+      if (!file.type.startsWith("image/")) {
+        alert("Please upload a valid image file (PNG, JPEG, etc.).");
+        return;
+      }
+      if (file.size > 20 * 1024 * 1024) {
+        alert("File size must be less than 20MB");
+        return;
+      }
       setFormData((prev) => ({
         ...prev,
         thumbNail: file,
       }));
-    } else {
-      setError("Please upload a valid image file (PNG, JPEG, etc.).");
     }
   };
 
-  // Handle file deletion
-  const handleDeleteImage = () => {
+  // Handle single image deletion (without caption)
+  const handleSingleImageDelete = () => {
     setFormData((prev) => ({
       ...prev,
       thumbNail: null,
     }));
   };
 
-  // Upload image to Firebase Storage
-  // const uploadImageToFirebase = async (file) => {
-  //   if (!file) return { url: null, error: "No file provided" };
+  // Handle multiple image uploads (with captions)
+  const handleMultiImageChange = (e) => {
+    const files = e.target.files;
+    if (files) {
+      Array.from(files).forEach((file) => {
+        if (!file.type.startsWith("image/")) {
+          alert("Please upload a valid image file (PNG, JPEG, etc.).");
+          return;
+        }
+        if (file.size > 20 * 1024 * 1024) {
+          alert("File size must be less than 20MB");
+          return;
+        }
 
+        setFormData((prev) => ({
+          ...prev,
+          images: [
+            ...(prev.images || []),
+            {
+              file,
+              caption: "",
+              id: Date.now() + Math.random(),
+            },
+          ],
+        }));
+      });
+    }
+  };
+
+  // Handle image caption changes
+  const handleCaptionChange = (id, caption) => {
+    setFormData((prev) => ({
+      ...prev,
+      images: (prev.images || []).map((img) =>
+        img.id === id ? { ...img, caption } : img
+      ),
+    }));
+  };
+
+  // Handle individual image deletion (with caption)
+  const handleMultiImageDelete = (id) => {
+    setFormData((prev) => ({
+      ...prev,
+      images: (prev.images || []).filter((img) => img.id !== id),
+    }));
+  };
+
+  // Generic image change handler that detects the type of upload needed
+  const handleImageChange = (e, type = "single") => {
+    if (type === "single") {
+      handleSingleImageChange(e);
+    } else {
+      handleMultiImageChange(e);
+    }
+  };
+
+  // Generic image delete handler that detects the type of deletion needed
+  const handleDeleteImage = (idOrEvent, type = "single") => {
+    if (type === "single") {
+      handleSingleImageDelete();
+    } else {
+      handleMultiImageDelete(idOrEvent);
+    }
+  };
+
+  // Upload to Firebase Storage (commented out but prepared for both types)
+  // const uploadToFirebase = async (formData) => {
   //   try {
-  //     const timestamp = Date.now();
-  //     const storageRef = ref(storage, `images/${file.name}_${timestamp}`);
-  //     await uploadBytes(storageRef, file);
-  //     const downloadURL = await getDownloadURL(storageRef);
-  //     return { url: downloadURL, error: null };
+  //     let updatedData = { ...formData };
+
+  //     // Handle single image (thumbNail)
+  //     if (formData.thumbNail instanceof File) {
+  //       const timestamp = Date.now();
+  //       const storageRef = ref(
+  //         storage,
+  //         `images/${formData.thumbNail.name}_${timestamp}`
+  //       );
+  //       await uploadBytes(storageRef, formData.thumbNail);
+  //       const downloadURL = await getDownloadURL(storageRef);
+  //       updatedData.thumbNail = downloadURL;
+  //     }
+
+  //     // Handle multiple images with captions
+  //     if (formData.images && formData.images.length > 0) {
+  //       const uploadPromises = formData.images.map(async (imageObj) => {
+  //         if (imageObj.file instanceof File) {
+  //           const timestamp = Date.now();
+  //           const storageRef = ref(
+  //             storage,
+  //             `images/${imageObj.file.name}_${timestamp}`
+  //           );
+  //           await uploadBytes(storageRef, imageObj.file);
+  //           const downloadURL = await getDownloadURL(storageRef);
+  //           return {
+  //             ...imageObj,
+  //             file: downloadURL,
+  //           };
+  //         }
+  //         return imageObj;
+  //       });
+
+  //       updatedData.images = await Promise.all(uploadPromises);
+  //     }
+
+  //     return { data: updatedData, error: null };
   //   } catch (err) {
-  //     console.error("Image upload error:", err);
-  //     return { url: null, error: err.message };
+  //     console.error("Upload error:", err);
+  //     return { data: null, error: err.message };
   //   }
-  // };
-
-  // Handle file changes
-  // const handleFileChange = (e) => {
-  //   const file = e.target.files?.[0];
-  //   if (file) {
-  //     setFormData((prev) => ({
-  //       ...prev,
-  //       cv: file,
-  //     }));
-  //   }
-  // };
-
-  // Handle file deletion
-  // const handleDeleteFile = () => {
-  //   setFormData((prev) => ({
-  //     ...prev,
-  //     cv: null,
-  //   }));
-  // };
-
-  // Upload file to Firebase Storage
-  // const uploadFileToFirebase = async (file) => {
-  //   if (!file) return { url: null, error: "No file provided" };
-
-  //   try {
-  //     const timestamp = Date.now();
-  //     const storageRef = ref(storage, `cv/${file.name}_${timestamp}`);
-  //     await uploadBytes(storageRef, file);
-  //     const downloadURL = await getDownloadURL(storageRef);
-  //     return { url: downloadURL, error: null };
-  //   } catch (err) {
-  //     console.error("File upload error:", err);
-  //     return { url: null, error: err.message };
-  //   }
-  // };
-
-  // const handleSkillChange = (index, value) => {
-  //   const updatedSkills = [...formData.requiredSkills];
-  //   updatedSkills[index] = value;
-  //   setFormData((prev) => ({ ...prev, requiredSkills: updatedSkills }));
-  // };
-
-  // const addSkill = () => {
-  //   setFormData((prev) => ({
-  //     ...prev,
-  //     requiredSkills: [...prev.requiredSkills, ""],
-  //   }));
-  // };
-
-  // const removeSkill = (index) => {
-  //   const updatedSkills = formData.requiredSkills.filter((_, i) => i !== index);
-  //   setFormData((prev) => ({ ...prev, requiredSkills: updatedSkills }));
   // };
 
   const resetForm = () => {
@@ -140,36 +188,10 @@ const useFormSubmission = (config) => {
     setSuccess(false);
 
     // try {
-    //   let submissionData = formData;
-    //   let thumbNailUrl = null;
-
-    //   if (formData.thumbNail instanceof File) {
-    //     const uploadResult = await uploadImageToFirebase(formData.thumbNail);
-    //     if (uploadResult.error) {
-    //       throw new Error(`Image upload failed: ${uploadResult.error}`);
-    //     }
-    //     thumbNailUrl = uploadResult.url;
-    //     submissionData = {
-    //       ...formData,
-    //       thumbNail: thumbNailUrl,
-    //     };
-    //   } else if (typeof formData.thumbNail === "string") {
-    //     thumbNailUrl = formData.thumbNail;
-    //   }
-
-    //   let cvUrl = null;
-    //   if (formData.cv instanceof File) {
-    //     const uploadResult = await uploadFileToFirebase(formData.cv);
-    //     if (uploadResult.error) {
-    //       throw new Error(`File upload failed: ${uploadResult.error}`);
-    //     }
-    //     cvUrl = uploadResult.url;
-    //     submissionData = {
-    //       ...formData,
-    //       cv: cvUrl,
-    //     };
-    //   } else if (typeof formData.cv === "string") {
-    //     cvUrl = formData.cv;
+    //   // Upload all images and get updated data
+    //   const uploadResult = await uploadToFirebase(formData);
+    //   if (uploadResult.error) {
+    //     throw new Error(`Upload failed: ${uploadResult.error}`);
     //   }
 
     //   if (endpoint) {
@@ -178,7 +200,7 @@ const useFormSubmission = (config) => {
     //       headers: {
     //         "Content-Type": "application/json",
     //       },
-    //       body: JSON.stringify(submissionData),
+    //       body: JSON.stringify(uploadResult.data),
     //     });
 
     //     if (!response.ok) {
@@ -204,18 +226,14 @@ const useFormSubmission = (config) => {
     setFormData,
     handleChange,
     handleSelectChange,
-    // handleFileChange,
-    // handleDeleteFile,
     handleSubmit,
     isLoading,
     handleImageChange,
     handleDeleteImage,
+    handleCaptionChange,
     error,
     success,
     resetForm,
-    // handleSkillChange,
-    // addSkill,
-    // removeSkill,
   };
 };
 

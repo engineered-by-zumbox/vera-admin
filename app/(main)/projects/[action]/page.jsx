@@ -1,3 +1,4 @@
+import ProjectForm from "@/components/Forms/ProjectForm";
 import Header from "@/components/Sections/Header";
 
 const ProjectActionPage = async ({ params }) => {
@@ -7,7 +8,7 @@ const ProjectActionPage = async ({ params }) => {
       <Header
         title={action === "create" ? "Add Project" : "Edit Project"}
       />
-      {/* <UploadNewsletterForm action={action} /> */}
+      <ProjectForm action={action} />
     </main>
   );
 };
