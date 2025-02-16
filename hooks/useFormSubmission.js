@@ -75,7 +75,7 @@ const useFormSubmission = (config) => {
           images: [
             ...(prev.images || []),
             {
-              file,
+              url: file,
               caption: "",
               id: Date.now() + Math.random(),
             },
@@ -175,6 +175,7 @@ const useFormSubmission = (config) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Run validation if provided
     if (validate) {
       const validationError = validate(formData);
       if (validationError) {
@@ -187,38 +188,77 @@ const useFormSubmission = (config) => {
     setError(null);
     setSuccess(false);
 
-    // try {
-    //   // Upload all images and get updated data
-    //   const uploadResult = await uploadToFirebase(formData);
-    //   if (uploadResult.error) {
-    //     throw new Error(`Upload failed: ${uploadResult.error}`);
-    //   }
+    try {
+      // Check if formData contains files/images
+      const hasFiles = Object.values(formData).some(
+        (value) =>
+          value instanceof File ||
+          (Array.isArray(value) &&
+            value.some((item) => item.url instanceof File))
+      );
 
-    //   if (endpoint) {
-    //     const response = await fetch(endpoint, {
-    //       method: id ? "PUT" : "POST",
-    //       headers: {
-    //         "Content-Type": "application/json",
-    //       },
-    //       body: JSON.stringify(uploadResult.data),
-    //     });
+      let requestBody;
+      let headers = {};
 
-    //     if (!response.ok) {
-    //       throw new Error("Failed to submit form");
-    //     }
-    //   }
+      if (hasFiles) {
+        // Handle form with files
+        requestBody = new FormData();
 
-    //   setSuccess(true);
-    //   toast.success("Form submitted successfully");
-    //   if (!id) {
-    //     resetForm();
-    //   }
-    // } catch (err) {
-    //   setError(err.message);
-    //   console.error("Form submission error:", err);
-    // } finally {
-    //   setLoading(false);
-    // }
+        // Append all form fields
+        Object.entries(formData).forEach(([key, value]) => {
+          if (Array.isArray(value)) {
+            // Handle array of images with captions
+            value.forEach((item, index) => {
+              if (item.url instanceof File) {
+                requestBody.append(`${key}`, item.url);
+                requestBody.append(`${key}Captions`, item.caption || "");
+              }
+            });
+          } else if (value instanceof File) {
+            // Handle single file
+            requestBody.append(key, value);
+          } else {
+            // Handle regular form fields
+            requestBody.append(key, value);
+          }
+        });
+      } else {
+        // Handle regular JSON form
+        requestBody = JSON.stringify(formData);
+        headers = {
+          "Content-Type": "application/json",
+        };
+      }
+
+      if (endpoint) {
+        const response = await fetch(endpoint, {
+          method: id ? "PUT" : "POST",
+          credentials: "include",
+          headers,
+          body: requestBody,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => null);
+          setError(errorData?.error || "An unknown error occurred");
+          throw new Error(errorData?.error || "Failed to submit form");
+        }
+
+        const data = await response.json();
+        setSuccess(true);
+        toast.success(id ? "Updated successfully" : "Submitted successfully");
+
+        if (!id) {
+          resetForm();
+        }
+
+        return data;
+      }
+    } catch (err) {
+      console.error("Form submission error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return {

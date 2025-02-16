@@ -1,13 +1,20 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Upload, X } from "lucide-react";
 import useFormSubmission from "@/hooks/useFormSubmission";
 import Link from "next/link";
+import { useOneProject } from "@/services/queries";
+import { Loader2 } from "lucide-react";
 
 const ProjectForm = ({ id, action }) => {
   const fileInputRef = useRef();
   const dropZoneRef = useRef();
+  const {
+    data,
+    isLoading: loading,
+    error: projectError,
+  } = useOneProject(id || null);
   const [isDragging, setIsDragging] = useState(false);
   let dragCounter = 0; // Add counter to track drag events
 
@@ -23,20 +30,32 @@ const ProjectForm = ({ id, action }) => {
     error,
   } = useFormSubmission({
     id: id,
-    endpoint: id ? `/api/blog/updateBlog/${id}` : "/api/blog/createBlog",
+    endpoint: id ? `/api/projects/${id}` : "/api/projects",
     defaultValues: {
-      projectName: "",
+      name: "",
       description: "",
       category: "",
       images: [],
     },
     validate: (formData) => {
-      if (!formData.projectName || !formData.title || !formData.body) {
-        return "Project name, newsletter title and body text are required.";
+      if (!formData.name || !formData.images) {
+        return "Project name and images are required.";
       }
       return null;
     },
   });
+
+  useEffect(() => {
+    if (data?.data) {
+      setFormData((prevFormData) => ({
+        ...prevFormData,
+        name: data.name || "",
+        description: data.description || "",
+        category: data.category || "",
+        images: data.images || null,
+      }));
+    }
+  }, [data, setFormData]);
 
   const handleButtonClick = () => {
     if (fileInputRef.current) {
@@ -103,16 +122,33 @@ const ProjectForm = ({ id, action }) => {
     }
   };
 
+  if (id && loading)
+    return (
+      <div className="h-[40dvh] myFlex justify-center">
+        <Loader2
+          strokeWidth={1.2}
+          className="animate-spin text-primary size-16"
+        />
+      </div>
+    );
+  if (id && projectError)
+    return (
+      <div className="h-[40dvh] text-red-500 myFlex justify-center">
+        Failed to load projects. Please try again later.
+      </div>
+    );
+
   return (
     <section className="bg-[#E3E3E34D] rounded-[32px] px-6 py-10 grid gap-12">
+      {error && <p className="text-red-500 mb-1 text-center">{error}</p>}
       <div>
         <h3 className="text-[28px] font-bold mb-3">Project Details</h3>
         <div className="space-y-6">
           <div>
             <input
               type="text"
-              name="projectName"
-              value={formData.projectName}
+              name="name"
+              value={formData.name}
               onChange={handleChange}
               className="input"
               placeholder="Project Name *"
@@ -188,7 +224,7 @@ const ProjectForm = ({ id, action }) => {
             >
               <div className="w-24 h-24 relative flex-shrink-0">
                 <img
-                  src={URL.createObjectURL(image.file)}
+                  src={URL.createObjectURL(image.url)}
                   alt="Preview"
                   className="w-full h-full object-cover rounded-lg"
                 />
@@ -217,7 +253,7 @@ const ProjectForm = ({ id, action }) => {
       </div>
       {action === "create" ? (
         <button onClick={handleSubmit} type="submit" className="btn">
-          Upload Newsletter
+          Upload Project
         </button>
       ) : (
         <div className="myFlex justify-end">

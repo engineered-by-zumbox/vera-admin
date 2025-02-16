@@ -1,8 +1,7 @@
 export const sideNavLinks = [
-  { title: "Dashboard", url: "/", icon: "/images/dashboard.svg" },
   {
     title: "Newsletters management",
-    url: "/newsletter",
+    url: "/",
     icon: "/images/newsletter.svg",
   },
   {

@@ -43,7 +43,7 @@
   }
 
   .btn {
-    @apply bg-primary w-full h-[48px] text-white font-medium rounded-lg transition-all duration-300 hover:scale-[1.01];
+    @apply bg-primary w-full h-[48px] text-white font-medium rounded-lg transition-all duration-150 hover:scale-[1.01];
   }
 
   .input {
