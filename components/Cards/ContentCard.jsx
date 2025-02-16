@@ -25,8 +25,8 @@ const DeleteDialog = ({ setIsDelete, handleDelete }) => {
         onClick={(e) => e.stopPropagation()}
         className="bg-white rounded-lg p-6 w-[90%] max-w-md"
       >
-        <h2 className="text-xl font-semibold mb-4">Confirm Logout</h2>
-        <p className="text-gray-600 mb-6">Are you sure you want to logout?</p>
+        <h2 className="text-xl font-semibold mb-4">Confirm Delete</h2>
+        <p className="text-gray-600 mb-6">Are you sure you want to delete this project?</p>
         {error && (
           <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm">
             {error}
@@ -48,10 +48,10 @@ const DeleteDialog = ({ setIsDelete, handleDelete }) => {
             {isLoading ? (
               <div className="myFlex gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Logging out...
+                Deleting...
               </div>
             ) : (
-              "Logout"
+              "Delete"
             )}
           </button>
         </div>
