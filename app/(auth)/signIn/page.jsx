@@ -1,5 +1,6 @@
 import SignInForm from "@/components/Forms/SignInForm";
 import Header from "@/components/Sections/Auth/Header";
+import { Suspense } from "react";
 
 const SignInPage = () => {
   return (
@@ -8,7 +9,9 @@ const SignInPage = () => {
         title="SIGN IN TO YOUR ACCOUNT"
         desc="Log in now to efficiently manage your website with our powerful tools!"
       />
-      <SignInForm />
+      <Suspense>
+        <SignInForm />
+      </Suspense>
     </div>
   );
 };
