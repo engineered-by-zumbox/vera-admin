@@ -6,6 +6,8 @@ import useFormSubmission from "@/hooks/useFormSubmission";
 import Link from "next/link";
 import { useOneProject } from "@/services/queries";
 import { Loader2 } from "lucide-react";
+import { getImageSrc } from "@/lib/utils";
+import toast from "react-hot-toast";
 
 const ProjectForm = ({ id, action }) => {
   const fileInputRef = useRef();
@@ -28,6 +30,7 @@ const ProjectForm = ({ id, action }) => {
     handleCaptionChange,
     isLoading,
     error,
+    success,
   } = useFormSubmission({
     id: id,
     endpoint: id ? `/api/projects/${id}` : "/api/projects",
@@ -46,7 +49,13 @@ const ProjectForm = ({ id, action }) => {
   });
 
   useEffect(() => {
-    if (data?.data) {
+    if (success) {
+      toast.success(id ? "Project updated" : "Project created");
+    }
+  }, [success]);
+
+  useEffect(() => {
+    if (data) {
       setFormData((prevFormData) => ({
         ...prevFormData,
         name: data.name || "",
@@ -112,7 +121,7 @@ const ProjectForm = ({ id, action }) => {
           images: [
             ...prev.images,
             {
-              file,
+              url: file,
               caption: "",
               id: Date.now() + Math.random(),
             },
@@ -139,7 +148,10 @@ const ProjectForm = ({ id, action }) => {
     );
 
   return (
-    <section className="bg-[#E3E3E34D] rounded-[32px] px-6 py-10 grid gap-12">
+    <form
+      onSubmit={handleSubmit}
+      className="bg-[#E3E3E34D] rounded-[32px] px-6 py-10 grid gap-12"
+    >
       {error && <p className="text-red-500 mb-1 text-center">{error}</p>}
       <div>
         <h3 className="text-[28px] font-bold mb-3">Project Details</h3>
@@ -217,14 +229,14 @@ const ProjectForm = ({ id, action }) => {
         </div>
 
         <div className="mt-6 space-y-4">
-          {formData.images.map((image) => (
+          {formData.images.map((image, index) => (
             <div
-              key={image.id}
+              key={index}
               className="bg-white rounded-lg p-4 flex items-start gap-4"
             >
               <div className="w-24 h-24 relative flex-shrink-0">
                 <img
-                  src={URL.createObjectURL(image.url)}
+                  src={getImageSrc(image.url)}
                   alt="Preview"
                   className="w-full h-full object-cover rounded-lg"
                 />
@@ -252,26 +264,48 @@ const ProjectForm = ({ id, action }) => {
         </div>
       </div>
       {action === "create" ? (
-        <button onClick={handleSubmit} type="submit" className="btn">
-          Upload Project
+        <button
+          disabled={isLoading}
+          type="submit"
+          className="btn myFlex justify-center"
+        >
+          {isLoading ? (
+            <div className="myFlex gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Uploading...
+            </div>
+          ) : (
+            "Upload Project"
+          )}
         </button>
       ) : (
         <div className="myFlex justify-end">
-          <div className="space-x-5">
+          <div className="space-x-5 myFlex">
             <button
-              onClick={handleSubmit}
               type="submit"
-              className="btn !w-[300px]"
+              disabled={isLoading}
+              className="btn !w-[300px] myFlex justify-center"
             >
-              Save changes
+              {isLoading ? (
+                <div className="myFlex gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Saving...
+                </div>
+              ) : (
+                "Save changes"
+              )}
             </button>
-            <button type="button" className="btn !w-[300px] !bg-[#CD3D3D]">
-              <Link href="/newsletter">Cancel</Link>
+            <button
+              type="button"
+              disabled={isLoading}
+              className="btn !w-[300px] !bg-[#CD3D3D]"
+            >
+              <Link href="/projects">Cancel</Link>
             </button>
           </div>
         </div>
       )}
-    </section>
+    </form>
   );
 };
 

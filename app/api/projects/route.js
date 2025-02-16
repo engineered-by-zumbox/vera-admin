@@ -6,12 +6,14 @@ import { put } from "@vercel/blob"
 
 // Helper function to check admin authentication
 async function checkAdminAuth(request) {
-  const authHeader = request.headers.get("Authorization")
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return null
+  const cookies = request.cookies;
+  const authToken = cookies.get("auth_token");
+
+  if (!authToken?.value) {
+    return null;
   }
-  const token = authHeader.split(" ")[1]
-  return verifyToken(token)
+
+  return verifyToken(authToken.value);
 }
 
 // GET all projects

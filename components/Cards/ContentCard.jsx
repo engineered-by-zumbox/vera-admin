@@ -1,22 +1,25 @@
+import { useDeleteProject } from "@/services/mutation";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 
-const DeleteDialog = ({ setIsDelete, handleDelete }) => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+const DeleteDialog = ({ setIsDelete, projectId }) => {
+  const { trigger, isMutating, error } = useDeleteProject();
 
-  const handleLogout = async () => {
+  const handleRequestDelete = async () => {
     try {
-      setIsLoading(true);
-      setError("");
-      await handleDelete();
+      await trigger({
+        id: projectId,
+      });
+      setIsDelete(false);
+      toast.success("Project deleted");
     } catch (error) {
-      setError("Failed to logout. Please try again.");
-    } finally {
-      setIsLoading(false);
+      alert("Failed to update request. Please try again.");
+      console.error("Error during optimistic update:", error);
     }
   };
+
   return (
     <div
       onClick={() => setIsDelete(false)}
@@ -27,7 +30,9 @@ const DeleteDialog = ({ setIsDelete, handleDelete }) => {
         className="bg-white rounded-lg p-6 w-[90%] max-w-md"
       >
         <h2 className="text-xl font-semibold mb-4">Confirm Delete</h2>
-        <p className="text-gray-600 mb-6">Are you sure you want to delete this project?</p>
+        <p className="text-gray-600 mb-6">
+          Are you sure you want to delete this project?
+        </p>
         {error && (
           <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm">
             {error}
@@ -36,17 +41,17 @@ const DeleteDialog = ({ setIsDelete, handleDelete }) => {
         <div className="flex justify-end gap-3">
           <button
             onClick={() => setIsDelete(false)}
-            disabled={isLoading}
+            disabled={isMutating}
             className="px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors duration-200"
           >
             Cancel
           </button>
           <button
-            disabled={isLoading}
-            onClick={handleLogout}
+            disabled={isMutating}
+            onClick={handleRequestDelete}
             className="px-4 py-2 bg-red-500 myFlex justify-center text-white rounded-lg hover:bg-red-600 transition-colors duration-200"
           >
-            {isLoading ? (
+            {isMutating ? (
               <div className="myFlex gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 Deleting...
@@ -92,14 +97,26 @@ const ContentCard = ({ project }) => {
         </div>
         <p className="line-clamp-5">{project?.description}</p>
         <div className="myFlex gap-5 justify-end">
-          <Link href="/projects/edit" className="text-[#9E8437] font-semibold">
+          <Link
+            href={`/projects/edit-${project._id}`}
+            className="text-[#9E8437] font-semibold"
+          >
             Edit
           </Link>
-          <button onClick={() => setIsDelete(true)} className="text-[#CD3D3D] font-semibold">Delete</button>
+          <button
+            onClick={() => setIsDelete(true)}
+            className="text-[#CD3D3D] font-semibold"
+          >
+            Delete
+          </button>
         </div>
       </div>
       {isDelete && (
-        <DeleteDialog setIsDelete={setIsDelete} handleDelete={handleDelete} />
+        <DeleteDialog
+          setIsDelete={setIsDelete}
+          handleDelete={handleDelete}
+          projectId={project._id}
+        />
       )}
     </div>
   );

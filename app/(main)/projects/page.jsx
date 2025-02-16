@@ -6,6 +6,7 @@ import AdminSectionCard from "@/components/Cards/AdminSectionCard";
 import Header from "@/components/Sections/Header";
 import { useProject } from "@/services/queries";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useState } from "react";
 
 const ContentCardSkeleton = () => {
   return (
@@ -36,6 +37,11 @@ const ContentCardSkeleton = () => {
 
 const PrtojectsPage = () => {
   const { data, error, isLoading } = useProject();
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredProjects = data?.filter((project) =>
+    project.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   if (error) {
     return (
@@ -57,9 +63,11 @@ const PrtojectsPage = () => {
               .fill(0)
               .map((_, i) => <ContentCardSkeleton key={i} />)
           ) : data?.length > 0 ? (
-            data.map((project) => (
-              <ContentCard key={project._id} project={project} />
-            ))
+            data
+              .slice(0, 5)
+              .map((project) => (
+                <ContentCard key={project._id} project={project} />
+              ))
           ) : (
             <p className="text-center text-gray-500">No projects available.</p>
           )}
@@ -72,14 +80,19 @@ const PrtojectsPage = () => {
           </button>
         </Link>
       </div>
-      <AdminSectionCard title="All Projects" style2={true}>
+      <AdminSectionCard
+        title="All Projects"
+        style2={true}
+        value={searchTerm}
+        setSearchTerm={setSearchTerm}
+      >
         <div className="mt-10 grid grid-cols-2 gap-4 gap-y-10">
           {isLoading ? (
             Array(4)
               .fill(0)
               .map((_, i) => <ContentCardSkeleton key={i} />)
-          ) : data?.length > 0 ? (
-            data.map((project) => (
+          ) : filteredProjects?.length > 0 ? (
+            filteredProjects.map((project) => (
               <ContentCard key={project._id} project={project} />
             ))
           ) : (

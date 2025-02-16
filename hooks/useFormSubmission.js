@@ -1,7 +1,4 @@
 import { useState } from "react";
-// import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-// import { storage } from "@/firebaseConfig";
-// import toast from "react-hot-toast";
 
 const useFormSubmission = (config) => {
   const { endpoint, defaultValues, validate, id } = config;
@@ -121,52 +118,6 @@ const useFormSubmission = (config) => {
     }
   };
 
-  // Upload to Firebase Storage (commented out but prepared for both types)
-  // const uploadToFirebase = async (formData) => {
-  //   try {
-  //     let updatedData = { ...formData };
-
-  //     // Handle single image (thumbNail)
-  //     if (formData.thumbNail instanceof File) {
-  //       const timestamp = Date.now();
-  //       const storageRef = ref(
-  //         storage,
-  //         `images/${formData.thumbNail.name}_${timestamp}`
-  //       );
-  //       await uploadBytes(storageRef, formData.thumbNail);
-  //       const downloadURL = await getDownloadURL(storageRef);
-  //       updatedData.thumbNail = downloadURL;
-  //     }
-
-  //     // Handle multiple images with captions
-  //     if (formData.images && formData.images.length > 0) {
-  //       const uploadPromises = formData.images.map(async (imageObj) => {
-  //         if (imageObj.file instanceof File) {
-  //           const timestamp = Date.now();
-  //           const storageRef = ref(
-  //             storage,
-  //             `images/${imageObj.file.name}_${timestamp}`
-  //           );
-  //           await uploadBytes(storageRef, imageObj.file);
-  //           const downloadURL = await getDownloadURL(storageRef);
-  //           return {
-  //             ...imageObj,
-  //             file: downloadURL,
-  //           };
-  //         }
-  //         return imageObj;
-  //       });
-
-  //       updatedData.images = await Promise.all(uploadPromises);
-  //     }
-
-  //     return { data: updatedData, error: null };
-  //   } catch (err) {
-  //     console.error("Upload error:", err);
-  //     return { data: null, error: err.message };
-  //   }
-  // };
-
   const resetForm = () => {
     setFormData(defaultValues || {});
     setError(null);
@@ -175,7 +126,6 @@ const useFormSubmission = (config) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Run validation if provided
     if (validate) {
       const validationError = validate(formData);
       if (validationError) {
@@ -189,72 +139,58 @@ const useFormSubmission = (config) => {
     setSuccess(false);
 
     try {
-      // Check if formData contains files/images
-      const hasFiles = Object.values(formData).some(
-        (value) =>
-          value instanceof File ||
-          (Array.isArray(value) &&
-            value.some((item) => item.url instanceof File))
-      );
+      const requestBody = new FormData();
 
-      let requestBody;
-      let headers = {};
+      // Add basic fields
+      requestBody.append("name", formData.name);
+      requestBody.append("description", formData.description || "");
+      requestBody.append("category", formData.category || "");
 
-      if (hasFiles) {
-        // Handle form with files
-        requestBody = new FormData();
+      if (id) {
+        // Add existing images that weren't deleted
+        const existingImages = formData.images.filter(
+          (img) => !(img.url instanceof File)
+        );
+        requestBody.append("existingImages", JSON.stringify(existingImages));
 
-        // Append all form fields
-        Object.entries(formData).forEach(([key, value]) => {
-          if (Array.isArray(value)) {
-            // Handle array of images with captions
-            value.forEach((item, index) => {
-              if (item.url instanceof File) {
-                requestBody.append(`${key}`, item.url);
-                requestBody.append(`${key}Captions`, item.caption || "");
-              }
-            });
-          } else if (value instanceof File) {
-            // Handle single file
-            requestBody.append(key, value);
-          } else {
-            // Handle regular form fields
-            requestBody.append(key, value);
-          }
+        // Add new images
+        const newImages = formData.images.filter(
+          (img) => img.url instanceof File
+        );
+        newImages.forEach((img, index) => {
+          requestBody.append("newImages", img.url);
+          requestBody.append("newCaptions", img.caption || "");
         });
       } else {
-        // Handle regular JSON form
-        requestBody = JSON.stringify(formData);
-        headers = {
-          "Content-Type": "application/json",
-        };
-      }
-
-      if (endpoint) {
-        const response = await fetch(endpoint, {
-          method: id ? "PUT" : "POST",
-          credentials: "include",
-          headers,
-          body: requestBody,
+        // Handle create (POST) request
+        formData.images.forEach((img, index) => {
+          requestBody.append("images", img.url);
+          requestBody.append("captions", img.caption || "");
         });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => null);
-          setError(errorData?.error || "An unknown error occurred");
-          throw new Error(errorData?.error || "Failed to submit form");
-        }
-
-        const data = await response.json();
-        setSuccess(true);
-
-        if (!id) {
-          resetForm();
-        }
-
-        return data;
       }
+
+      const response = await fetch(endpoint, {
+        method: id ? "PUT" : "POST",
+        credentials: "include",
+        body: requestBody,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.error || "Failed to submit form");
+      }
+
+      const data = await response.json();
+      setSuccess(true);
+
+      if (!id) {
+        resetForm();
+      }
+
+      return data;
     } catch (err) {
       console.error("Form submission error:", err);
+      setError(err.message || "An error occurred while submitting the form");
     } finally {
       setLoading(false);
     }

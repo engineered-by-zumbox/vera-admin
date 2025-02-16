@@ -1,6 +1,13 @@
 import { Search } from "lucide-react";
 
-const AdminSectionCard = ({ title, desc, children, style2 = false }) => {
+const AdminSectionCard = ({
+  title,
+  desc,
+  children,
+  style2 = false,
+  value,
+  setSearchTerm,
+}) => {
   return (
     <section className="bg-[#E3E3E34D] p-10 rounded-[32px] max-w-[1016px]">
       <div>
@@ -12,6 +19,8 @@ const AdminSectionCard = ({ title, desc, children, style2 = false }) => {
               <input
                 type="text"
                 placeholder="Conduct a search"
+                value={value}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 className="placeholder:text-[#B1B1B1] bg-transparent w-full focus:outline-none"
               />
             </div>
