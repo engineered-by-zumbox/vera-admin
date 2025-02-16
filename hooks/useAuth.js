@@ -1,40 +1,44 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import Cookies from "js-cookie";
 
 export const useAuth = () => {
   const router = useRouter();
   const pathname = usePathname();
   const [authenticating, setAuthenticating] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    const authToken = Cookies.get("auth_token");
-    console.log(authToken)
-
-    if (!authToken) {
-      router.replace(`/signIn?callbackUrl=${encodeURIComponent(pathname)}`);
-      return;
-    }
-
-    const verifyToken = async () => {
+    const verifyAuth = async () => {
       try {
         const response = await fetch("/api/auth/verify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: authToken }),
+          method: "GET",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
         });
 
-        if (!response.ok) throw new Error("Invalid token");
+        const data = await response.json();
 
-        setAuthenticating(false);
+        if (!response.ok) {
+          console.error("Auth verification failed:", data);
+          throw new Error(data.error);
+        }
+
+        setIsAuthenticated(true);
       } catch (error) {
-        console.error("Error verifying token:", error);
-        router.replace(`/signIn?callbackUrl=${encodeURIComponent(pathname)}`);
+        console.error("Auth error:", error);
+        // Add a small delay before redirect to ensure console logs are visible
+        setTimeout(() => {
+          router.replace(`/signIn?callbackUrl=${encodeURIComponent(pathname)}`);
+        }, 100);
+      } finally {
+        setAuthenticating(false);
       }
     };
 
-    verifyToken();
-  }, []);
+    verifyAuth();
+  }, [pathname, router]);
 
-  return { authenticating };
+  return { authenticating, isAuthenticated };
 };

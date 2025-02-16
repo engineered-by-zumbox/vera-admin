@@ -246,7 +246,6 @@ const useFormSubmission = (config) => {
 
         const data = await response.json();
         setSuccess(true);
-        toast.success(id ? "Updated successfully" : "Submitted successfully");
 
         if (!id) {
           resetForm();

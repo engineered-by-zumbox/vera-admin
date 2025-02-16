@@ -51,18 +51,13 @@ const ForgottenPasswordForm = ({ setEmail }) => {
         className="!rounded-2xl btn mt-3 myFlex justify-center"
         disabled={isLoading}
       >
-        {isLoading && !success ? (
-          <div className="w-fit myFlex gap-2">
-            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            Resetting password...
-          </div>
-        ) : isLoading && success ? (
+        {isLoading ? (
           <div className="w-fit myFlex gap-2">
             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
             Resetting password...
           </div>
         ) : (
-          <div></div>
+          "Reset Password"
         )}
       </button>
     </form>

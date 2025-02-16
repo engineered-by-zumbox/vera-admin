@@ -50,10 +50,13 @@ export async function POST(request) {
         },
       });
 
-      response.cookies.set("auth_token", token, {
+      response.cookies.set({
+        name: "auth_token",
+        value: token,
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        sameSite: "lax",
+        path: "/",
         maxAge: 60 * 60 * 24, // 1 day
       });
 
@@ -109,10 +112,13 @@ export async function POST(request) {
       token: token,
     });
 
-    response.cookies.set("auth_token", token, {
+    response.cookies.set({
+      name: "auth_token",
+      value: token,
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: "lax",
+      path: "/",
       maxAge: 60 * 60 * 24, // 1 day
     });
 

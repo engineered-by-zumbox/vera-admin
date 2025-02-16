@@ -5,7 +5,7 @@ import Spinner from "@/components/Spinner";
 import { useAuth } from "@/hooks/useAuth";
 
 const AdminLayout = ({ children }) => {
-  const { authenticating } = useAuth();
+  const { authenticating, isAuthenticated } = useAuth();
 
   if (authenticating) {
     return (
@@ -13,6 +13,10 @@ const AdminLayout = ({ children }) => {
         <Spinner />
       </div>
     );
+  }
+
+  if (!isAuthenticated) {
+    return null;
   }
 
   return (

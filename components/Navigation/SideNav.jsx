@@ -2,12 +2,88 @@
 
 import { sideNavLinks } from "@/constants";
 import { cn } from "@/lib/utils";
+import { Loader2 } from "lucide-react";
 import { LogOut } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+
+const LogoutDialog = ({ setIsLogout, logout }) => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleLogout = async () => {
+    try {
+      setIsLoading(true);
+      setError("");
+      await logout();
+    } catch (error) {
+      setError("Failed to logout. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  return (
+    <div
+      onClick={() => setIsLogout(false)}
+      className="fixed z-[50000] top-0 bottom-0 myFlex justify-center right-0 left-0 bg-black/40"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-lg p-6 w-[90%] max-w-md"
+      >
+        <h2 className="text-xl font-semibold mb-4">Confirm Logout</h2>
+        <p className="text-gray-600 mb-6">Are you sure you want to logout?</p>
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm">
+            {error}
+          </div>
+        )}
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={() => setIsLogout(false)}
+            disabled={isLoading}
+            className="px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+          >
+            Cancel
+          </button>
+          <button
+            disabled={isLoading}
+            onClick={handleLogout}
+            className="px-4 py-2 bg-red-500 myFlex justify-center text-white rounded-lg hover:bg-red-600 transition-colors duration-200"
+          >
+            {isLoading ? (
+              <div className="myFlex gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Logging out...
+              </div>
+            ) : (
+              "Logout"
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const SideNav = () => {
+  const router = useRouter();
   const pathName = usePathname();
+  const [isLogout, setIsLogout] = useState(false);
+
+  const logout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.replace("/signIn");
+  };
+
+  useEffect(() => {
+    if (isLogout) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "auto";
+    }
+  }, [isLogout]);
 
   const isActiveLink = (navUrl) => {
     if (navUrl === "/" && pathName === "/") {
@@ -47,10 +123,11 @@ const SideNav = () => {
           </li>
         ))}
       </ul>
-      <button className="myFlex gap-3">
+      <button onClick={() => setIsLogout(true)} className="myFlex gap-3">
         <LogOut className="rotate-180" />
         Logout
       </button>
+      {isLogout && <LogoutDialog setIsLogout={setIsLogout} logout={logout} />}
     </aside>
   );
 };
