@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Cookies from "js-cookie";
-import { jwtVerify } from "jose";
 
 export const useAuth = () => {
   const router = useRouter();
@@ -9,42 +8,33 @@ export const useAuth = () => {
   const [authenticating, setAuthenticating] = useState(true);
 
   useEffect(() => {
-    const verifyToken = async (token) => {
-      try {
-        if (!process.env.NEXT_PUBLIC_JWT_SECRET) {
-          throw new Error(
-            "NEXT_PUBLIC_JWT_SECRET is not defined in environment variables"
-          );
-        }
-        const secret = new TextEncoder().encode(
-          process.env.NEXT_PUBLIC_JWT_SECRET
-        );
-        const { payload } = await jwtVerify(token, secret);
+    const authToken = Cookies.get("auth_token");
+    console.log(authToken)
 
-        const currentTime = Math.floor(Date.now() / 1000);
-        if (payload.exp && payload.exp < currentTime) {
-          throw new Error("Token has expired");
-        }
+    if (!authToken) {
+      router.replace(`/signIn?callbackUrl=${encodeURIComponent(pathname)}`);
+      return;
+    }
+
+    const verifyToken = async () => {
+      try {
+        const response = await fetch("/api/auth/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: authToken }),
+        });
+
+        if (!response.ok) throw new Error("Invalid token");
 
         setAuthenticating(false);
       } catch (error) {
         console.error("Error verifying token:", error);
-        redirectToLogin();
+        router.replace(`/signIn?callbackUrl=${encodeURIComponent(pathname)}`);
       }
     };
 
-    const redirectToLogin = () => {
-      const callbackUrl = encodeURIComponent(pathname);
-      router.push(`/signIn?callbackUrl=${callbackUrl}`);
-    };
-
-    const authToken = Cookies.get("auth_token");
-    if (!authToken) {
-      redirectToLogin();
-    } else {
-      verifyToken(authToken);
-    }
-  }, [router, pathname]);
+    verifyToken();
+  }, []);
 
   return { authenticating };
 };
