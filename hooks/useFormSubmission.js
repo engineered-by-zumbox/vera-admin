@@ -139,40 +139,54 @@ const useFormSubmission = (config) => {
     setSuccess(false);
 
     try {
-      const requestBody = new FormData();
+      let requestBody;
+      let headers = { "Content-Type": "application/json" }; // Default headers
 
-      // Add basic fields
-      requestBody.append("name", formData.name);
-      requestBody.append("description", formData.description || "");
-      requestBody.append("category", formData.category || "");
+      // Check if images exist in formData
+      const hasImages = formData.images && formData.images.length > 0;
 
-      if (id) {
-        // Add existing images that weren't deleted
-        const existingImages = formData.images.filter(
-          (img) => !(img.url instanceof File)
-        );
-        requestBody.append("existingImages", JSON.stringify(existingImages));
+      if (hasImages) {
+        // Use FormData for requests with images
+        requestBody = new FormData();
 
-        // Add new images
-        const newImages = formData.images.filter(
-          (img) => img.url instanceof File
-        );
-        newImages.forEach((img, index) => {
-          requestBody.append("newImages", img.url);
-          requestBody.append("newCaptions", img.caption || "");
-        });
+        // Add basic fields
+        requestBody.append("name", formData.name);
+        requestBody.append("description", formData.description || "");
+        requestBody.append("category", formData.category || "");
+
+        if (id) {
+          // Add existing images that weren't deleted
+          const existingImages = formData.images.filter(
+            (img) => !(img.url instanceof File)
+          );
+          requestBody.append("existingImages", JSON.stringify(existingImages));
+
+          // Add new images
+          const newImages = formData.images.filter(
+            (img) => img.url instanceof File
+          );
+          newImages.forEach((img, index) => {
+            requestBody.append("newImages", img.url);
+            requestBody.append("newCaptions", img.caption || "");
+          });
+        } else {
+          // Handle create (POST) request
+          formData.images.forEach((img, index) => {
+            requestBody.append("images", img.url);
+            requestBody.append("captions", img.caption || "");
+          });
+        }
       } else {
-        // Handle create (POST) request
-        formData.images.forEach((img, index) => {
-          requestBody.append("images", img.url);
-          requestBody.append("captions", img.caption || "");
-        });
+        // Use JSON for requests without images
+        requestBody = JSON.stringify(formData);
+        headers = { "Content-Type": "application/json" };
       }
 
       const response = await fetch(endpoint, {
         method: id ? "PUT" : "POST",
         credentials: "include",
         body: requestBody,
+        headers: hasImages ? {} : headers, // Only set headers for JSON requests
       });
 
       if (!response.ok) {
