@@ -17,7 +17,7 @@ const ForgottenPasswordPage = () => {
             <>
               We have sent an email to{" "}
               <span className="font-bold">{email}</span>. If this email exists,
-              you'll receive a reset link shortly
+              you&apos;ll receive a reset link shortly
             </>
           ) : (
             "Enter your email address to receive a link to reset your password."
