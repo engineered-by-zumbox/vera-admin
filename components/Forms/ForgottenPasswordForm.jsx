@@ -5,10 +5,12 @@ import { Loader2 } from "lucide-react";
 import { Mail } from "lucide-react";
 import { useEffect } from "react";
 
-const ForgottenPasswordForm = ({ setEmail }) => {
+const ForgottenPasswordForm = ({ setEmail, email }) => {
   const { formData, handleChange, handleSubmit, isLoading, error, success } =
     useFormSubmission({
-      endpoint: "/api/auth/forgot-password",
+      endpoint: email
+        ? "/api/auth/resend-reset-email"
+        : "/api/auth/forgot-password",
       defaultValues: {
         email: "",
       },
@@ -23,11 +25,20 @@ const ForgottenPasswordForm = ({ setEmail }) => {
       },
     });
 
+  const buttonText =
+    success || email
+      ? isLoading
+        ? "Resending..."
+        : "Resend Email"
+      : isLoading
+      ? "Resetting..."
+      : "Reset Password";
+
   useEffect(() => {
     if (success) {
       setEmail(formData.email);
     }
-  }, [success]);
+  }, [success, formData.email, setEmail]);
 
   return (
     <form className="grid gap-4" onSubmit={handleSubmit}>
@@ -45,7 +56,6 @@ const ForgottenPasswordForm = ({ setEmail }) => {
           />
         </div>
       )}
-
       <button
         type="submit"
         className="!rounded-2xl btn mt-3 myFlex justify-center"
@@ -54,10 +64,10 @@ const ForgottenPasswordForm = ({ setEmail }) => {
         {isLoading ? (
           <div className="w-fit myFlex gap-2">
             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            Resetting password...
+            {buttonText}
           </div>
         ) : (
-          "Reset Password"
+          buttonText
         )}
       </button>
     </form>

@@ -10,13 +10,7 @@ export async function POST(request) {
   try {
     await dbConnect();
 
-    const { email } = await request.json();
-
-    if (!email) {
-      return NextResponse.json({ error: "Email is required" }, { status: 400 });
-    }
-
-    const adminUser = await User.findOne({ email });
+    const adminUser = await User.findOne();
 
     if (!adminUser) {
       return NextResponse.json(
@@ -29,7 +23,7 @@ export async function POST(request) {
 
     const resetToken = generateToken(adminUser._id.toString(), "15m"); // Token valid for 15 minutes
 
-    const resetLink = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${resetToken}`;
+    const resetLink = `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password?token=${resetToken}`;
 
     await resend.emails.send({
       from: `Veralyssa Admin <noreply@wescng.com>`,

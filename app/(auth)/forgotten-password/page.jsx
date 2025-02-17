@@ -13,12 +13,18 @@ const ForgottenPasswordPage = () => {
       <Header
         title="FORGOT PASSWORD?"
         desc={
-          email
-            ? `We have sent an email to ${email} If this email exists, you'll receive a reset link shortly`
-            : "Enter your email address to receive a link to reset your password."
+          email ? (
+            <>
+              We have sent an email to{" "}
+              <span className="font-bold">{email}</span>. If this email exists,
+              you'll receive a reset link shortly
+            </>
+          ) : (
+            "Enter your email address to receive a link to reset your password."
+          )
         }
       />
-      <ForgottenPasswordForm setEmail={setEmail} />
+      <ForgottenPasswordForm email={email} setEmail={setEmail} />
       <Link
         href="/signIn"
         className="myFlex gap-2 hover:underline text-black/70 w-fit mx-auto"

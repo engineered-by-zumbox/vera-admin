@@ -197,10 +197,6 @@ const useFormSubmission = (config) => {
       const data = await response.json();
       setSuccess(true);
 
-      if (!id) {
-        resetForm();
-      }
-
       return data;
     } catch (err) {
       console.error("Form submission error:", err);

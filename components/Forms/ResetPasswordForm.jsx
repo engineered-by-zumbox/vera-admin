@@ -1,13 +1,18 @@
 "use client";
 
 import { Eye, EyeOff } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import toast from "react-hot-toast";
 
-const ResetPasswordForm = () => {
+const ResetPasswordForm = ({ token }) => {
+  const router = useRouter();
   const [form, setForm] = useState({
     newPassword: "",
     confirmPassword: "",
   });
+
+  const [isLoading, setIsLoading] = useState(false);
 
   const [showPassword, setShowPassword] = useState({
     new: false,
@@ -58,11 +63,28 @@ const ResetPasswordForm = () => {
     return isValid;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (validateForm()) {
-      // Handle form submission
-      console.log("Form submitted:", form);
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/set-new-password`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            resetToken: token,
+            newPassword: form.newPassword,
+            confirmPassword: form.confirmPassword,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        alert(errorData?.error || "Failed to submit form");
+      }
+
+      toast.success("Password Reset");
+      router.push("/signIn");
     }
   };
 
@@ -126,9 +148,10 @@ const ResetPasswordForm = () => {
 
       <button
         type="submit"
+        disabled={isLoading}
         className="bg-primary text-white rounded-2xl h-[48px] mt-3"
       >
-        Reset password
+        {isLoading ? "Resetting" : "Reset password"}
       </button>
     </form>
   );
