@@ -28,6 +28,7 @@ const ProjectForm = ({ id, action }) => {
     handleImageChange,
     handleDeleteImage,
     handleCaptionChange,
+    resetForm,
     isLoading,
     error,
     success,
@@ -51,6 +52,9 @@ const ProjectForm = ({ id, action }) => {
   useEffect(() => {
     if (success) {
       toast.success(id ? "Project updated" : "Project created");
+    }
+    if (success && !id) {
+      resetForm();
     }
   }, [success]);
 
