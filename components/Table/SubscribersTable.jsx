@@ -52,7 +52,7 @@ const SubscribersTable = () => {
 
   if (error) {
     return (
-      <div className="text-red-500 h-dvh myFlex justify-center text-center py-10">
+      <div className="text-red-500 h-[20dvh] myFlex justify-center text-center py-10">
         Failed to load subscribers. Please try again later.
       </div>
     );
@@ -60,7 +60,7 @@ const SubscribersTable = () => {
 
   if (isLoading) {
     return (
-      <div className="h-dvh myFlex justify-center text-center py-10">
+      <div className="h-[20dvh] myFlex justify-center text-center py-10">
         Loading table ...
       </div>
     );
@@ -69,7 +69,7 @@ const SubscribersTable = () => {
   return (
     <div className="w-full">
       {/* Add the Export CSV Button */}
-      <div className="mb-4">
+      <div className="mb-10">
         <button
           onClick={handleExportCSV}
           className="bg-primary myFlex gap-3 text-white px-4 py-2 rounded hover:bg-primary-100"
