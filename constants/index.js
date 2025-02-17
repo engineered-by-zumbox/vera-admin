@@ -1,12 +1,17 @@
 export const sideNavLinks = [
   {
-    title: "Newsletters management",
+    title: "Subscribers",
     url: "/",
-    icon: "/images/newsletter.svg",
+    icon: "/images/user.svg",
   },
   {
     title: "Project management",
     url: "/projects",
     icon: "/images/content.svg",
+  },
+  {
+    title: "Newsletters management",
+    url: "/newsletter",
+    icon: "/images/newsletter.svg",
   },
 ];

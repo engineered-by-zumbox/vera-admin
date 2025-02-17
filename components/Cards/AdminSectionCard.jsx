@@ -9,7 +9,7 @@ const AdminSectionCard = ({
   setSearchTerm,
 }) => {
   return (
-    <section className="bg-[#E3E3E34D] p-10 rounded-[32px] max-w-[1016px]">
+    <section className="bg-[#E3E3E34D] p-10 rounded-[32px]">
       <div>
         {style2 ? (
           <div className="myFlex justify-between">
