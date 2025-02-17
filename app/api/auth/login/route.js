@@ -25,7 +25,7 @@ export async function POST(request) {
 
     await dbConnect();
 
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne();
 
     if (!existingUser) {
       console.log("No admin user found, creating new admin");

@@ -93,10 +93,10 @@ const useFormSubmission = (config) => {
   };
 
   // Handle individual image deletion (with caption)
-  const handleMultiImageDelete = (id) => {
+  const handleMultiImageDelete = (index) => {
     setFormData((prev) => ({
       ...prev,
-      images: (prev.images || []).filter((img) => img.id !== id),
+      images: prev.images.filter((_, i) => i !== index), // Remove by index
     }));
   };
 

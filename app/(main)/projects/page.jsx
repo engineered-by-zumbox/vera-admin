@@ -73,13 +73,13 @@ const PrtojectsPage = () => {
           )}
         </div>
       </AdminSectionCard>
-      <div className="py-9 grid place-items-end max-w-[1016px]">
-        <Link href="/projects/create">
-          <button className="bg-[#E5C871B2] hover:scale-105 transition-all duration-300 rounded-2xl myFlex shadow-sm p-3 px-5 gap-2 font-semibold">
-            Add new <img src="/images/add.svg" alt="add icon" />
-          </button>
-        </Link>
-      </div>
+
+      <Link href="/projects/create" className="fixed bottom-7 right-7 z-[4000]">
+        <button className="bg-[#E5C871B2] hover:scale-105 transition-all duration-300 rounded-2xl myFlex shadow-sm p-3 px-5 gap-2 font-semibold">
+          Add new <img src="/images/add.svg" alt="add icon" />
+        </button>
+      </Link>
+      <div className="my-12" />
       <AdminSectionCard
         title="All Projects"
         style2={true}

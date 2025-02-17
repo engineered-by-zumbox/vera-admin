@@ -253,7 +253,7 @@ const ProjectForm = ({ id, action }) => {
                 />
               </div>
               <button
-                onClick={() => handleDeleteImage(image.id, "multi")}
+                onClick={() => handleDeleteImage(index, "multi")}
                 type="button"
                 className="text-red-500 hover:bg-red-50 rounded-full p-2"
               >
