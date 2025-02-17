@@ -7,3 +7,7 @@ export function useProject() {
 export function useSubscribers() {
   return useSWR("/api/newsletter-subscribers");
 }
+
+export function useOneProject(id) {
+  return useSWR(`/api/projects/${id}`);
+}
