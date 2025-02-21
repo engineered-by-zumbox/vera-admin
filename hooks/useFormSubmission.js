@@ -40,7 +40,7 @@ const useFormSubmission = (config) => {
       }
       setFormData((prev) => ({
         ...prev,
-        thumbNail: file,
+        imageUrl: file,
       }));
     }
   };
@@ -49,7 +49,7 @@ const useFormSubmission = (config) => {
   const handleSingleImageDelete = () => {
     setFormData((prev) => ({
       ...prev,
-      thumbNail: null,
+      imageUrl: null,
     }));
   };
 
@@ -142,39 +142,55 @@ const useFormSubmission = (config) => {
       let requestBody;
       let headers = { "Content-Type": "application/json" }; // Default headers
 
-      // Check if images exist in formData
-      const hasImages = formData.images && formData.images.length > 0;
+      // Check if there's either a single image or multiple images
+      const hasSingleImage = formData.imageUrl;
+      const hasMultipleImages = formData.images && formData.images.length > 0;
 
-      if (hasImages) {
-        // Use FormData for requests with images
+      if (hasSingleImage || hasMultipleImages) {
+        // Use FormData for any request with images
         requestBody = new FormData();
 
         // Add basic fields
-        requestBody.append("name", formData.name);
-        requestBody.append("description", formData.description || "");
-        requestBody.append("category", formData.category || "");
+        Object.keys(formData).forEach((key) => {
+          if (key !== "imageUrl" && key !== "images" && formData[key]) {
+            requestBody.append(key, formData[key]);
+          }
+        });
 
-        if (id) {
-          // Add existing images that weren't deleted
-          const existingImages = formData.images.filter(
-            (img) => !(img.url instanceof File)
-          );
-          requestBody.append("existingImages", JSON.stringify(existingImages));
+        if (hasSingleImage) {
+          // Handle single image
+          if (formData.imageUrl instanceof File) {
+            requestBody.append("image", formData.imageUrl);
+          } else if (typeof formData.imageUrl === "string" && id) {
+            // If it's an update and the image is a URL, pass it as is
+            requestBody.append("existingImageUrl", formData.imageUrl);
+          }
+        } else if (hasMultipleImages) {
+          // Handle multiple images
+          if (id) {
+            // Handle update case
+            const existingImages = formData.images.filter(
+              (img) => !(img.url instanceof File)
+            );
+            requestBody.append(
+              "existingImages",
+              JSON.stringify(existingImages)
+            );
 
-          // Add new images
-          const newImages = formData.images.filter(
-            (img) => img.url instanceof File
-          );
-          newImages.forEach((img, index) => {
-            requestBody.append("newImages", img.url);
-            requestBody.append("newCaptions", img.caption || "");
-          });
-        } else {
-          // Handle create (POST) request
-          formData.images.forEach((img, index) => {
-            requestBody.append("images", img.url);
-            requestBody.append("captions", img.caption || "");
-          });
+            const newImages = formData.images.filter(
+              (img) => img.url instanceof File
+            );
+            newImages.forEach((img, index) => {
+              requestBody.append("newImages", img.url);
+              requestBody.append("newCaptions", img.caption || "");
+            });
+          } else {
+            // Handle create case
+            formData.images.forEach((img, index) => {
+              requestBody.append("images", img.url);
+              requestBody.append("captions", img.caption || "");
+            });
+          }
         }
       } else {
         // Use JSON for requests without images
@@ -186,7 +202,7 @@ const useFormSubmission = (config) => {
         method: id ? "PUT" : "POST",
         credentials: "include",
         body: requestBody,
-        headers: hasImages ? {} : headers, // Only set headers for JSON requests
+        headers: hasSingleImage || hasMultipleImages ? {} : headers, // Only set headers for JSON requests
       });
 
       if (!response.ok) {

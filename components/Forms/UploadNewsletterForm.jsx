@@ -1,15 +1,23 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Upload, X } from "lucide-react";
 import useFormSubmission from "@/hooks/useFormSubmission";
 import Link from "next/link";
+import { useOneNewsletter } from "@/services/queries";
+import toast from "react-hot-toast";
+import { Loader2 } from "lucide-react";
 
 const UploadNewsletterForm = ({ id, action }) => {
   const fileInputRef = useRef();
   const dropZoneRef = useRef();
+  const {
+    data,
+    isLoading: loading,
+    error: NewsletterError,
+  } = useOneNewsletter(id || null);
   const [isDragging, setIsDragging] = useState(false);
-  let dragCounter = 0; // Add counter to track drag events
+  let dragCounter = 0;
 
   const {
     formData,
@@ -20,21 +28,45 @@ const UploadNewsletterForm = ({ id, action }) => {
     handleSubmit,
     isLoading,
     error,
+    success,
+    resetForm,
   } = useFormSubmission({
     id: id,
-    endpoint: id ? `/api/blog/updateBlog/${id}` : "/api/blog/createBlog",
+    endpoint: id
+      ? `/api/newsletter-campaigns/${id}`
+      : "/api/newsletter-campaigns",
     defaultValues: {
       title: "",
-      thumbNail: null,
-      body: "",
+      imageUrl: "",
+      message: "",
     },
     validate: (formData) => {
-      if (!formData.title || !formData.body) {
-        return "Newsletter title and body text are required.";
+      if (!formData.message) {
+        return "Newsletter title and message text are required.";
       }
       return null;
     },
   });
+
+  useEffect(() => {
+    if (success) {
+      toast.success(id ? "Project updated" : "Project created");
+    }
+    if (success && !id) {
+      resetForm();
+    }
+  }, [success]);
+
+  useEffect(() => {
+    if (data) {
+      setFormData((prevFormData) => ({
+        ...prevFormData,
+        title: data.title || "",
+        message: data.message || "",
+        imageUrl: data.imageUrl || "",
+      }));
+    }
+  }, [data, setFormData]);
 
   const handleButtonClick = () => {
     if (fileInputRef.current) {
@@ -88,18 +120,35 @@ const UploadNewsletterForm = ({ id, action }) => {
         return;
       }
 
-      // Create a fake event object to reuse existing handleImageChange
-      const fakeEvent = {
-        target: {
-          files: [file],
-        },
-      };
-      handleImageChange(fakeEvent);
+      setFormData((prev) => ({
+        ...prev,
+        imageUrl: file,
+      }));
+      console.log("done")
     }
   };
 
+  if (id && loading)
+    return (
+      <div className="h-[40dvh] myFlex justify-center">
+        <Loader2
+          strokeWidth={1.2}
+          className="animate-spin text-primary size-16"
+        />
+      </div>
+    );
+  if (id && NewsletterError)
+    return (
+      <div className="h-[40dvh] text-red-500 myFlex justify-center">
+        Failed to load newsletter. Please try again later.
+      </div>
+    );
+
   return (
-    <section className="bg-[#E3E3E34D] rounded-[32px] px-6 py-10 grid gap-12">
+    <form
+      onSubmit={handleSubmit}
+      className="bg-[#E3E3E34D] rounded-[32px] px-6 py-10 grid gap-12"
+    >
       <div>
         <h3 className="text-[28px] font-bold mb-3">Upload Image</h3>
         <p className="text-sm text-[#7B7670]">
@@ -121,13 +170,13 @@ const UploadNewsletterForm = ({ id, action }) => {
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          {formData.thumbNail ? (
+          {formData.imageUrl ? (
             <div className="relative">
               <img
                 src={
-                  typeof formData.thumbNail === "string"
-                    ? formData.thumbNail
-                    : URL.createObjectURL(formData.thumbNail)
+                  typeof formData.imageUrl === "string"
+                    ? formData.imageUrl
+                    : URL.createObjectURL(formData.imageUrl)
                 }
                 alt="Preview"
                 className="rounded-lg w-fit h-[230px] object-contain"
@@ -181,8 +230,8 @@ const UploadNewsletterForm = ({ id, action }) => {
         <h3 className="text-[28px] font-bold mb-3">What is the message?</h3>
         <div className="mt-3">
           <textarea
-            name="body"
-            value={formData.body}
+            name="message"
+            value={formData.message}
             onChange={handleChange}
             className="input"
             placeholder="Type here"
@@ -191,22 +240,48 @@ const UploadNewsletterForm = ({ id, action }) => {
         </div>
       </div>
       {action === "create" ? (
-        <button type="submit" className="btn">
-          Upload Newsletter
+        <button
+          disabled={isLoading}
+          type="submit"
+          className="btn myFlex justify-center"
+        >
+          {isLoading ? (
+            <div className="myFlex gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Uploading...
+            </div>
+          ) : (
+            "Upload Newsletter"
+          )}
         </button>
       ) : (
         <div className="myFlex justify-end">
-          <div className="space-x-5">
-            <button type="submit" className="btn !w-[300px]">
-              Save changes
+          <div className="space-x-5 myFlex">
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="btn !w-[300px] myFlex justify-center"
+            >
+              {isLoading ? (
+                <div className="myFlex gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Saving...
+                </div>
+              ) : (
+                "Save changes"
+              )}
             </button>
-            <button type="submit" className="btn !w-[300px] !bg-[#CD3D3D]">
+            <button
+              type="button"
+              disabled={isLoading}
+              className="btn !w-[300px] !bg-[#CD3D3D]"
+            >
               <Link href="/newsletter">Cancel</Link>
             </button>
           </div>
         </div>
       )}
-    </section>
+    </form>
   );
 };
 

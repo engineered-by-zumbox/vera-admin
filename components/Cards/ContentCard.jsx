@@ -70,11 +70,6 @@ const DeleteDialog = ({ setIsDelete, projectId }) => {
 const ContentCard = ({ project }) => {
   const [isDelete, setIsDelete] = useState(false);
 
-  const handleDelete = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.replace("/signIn");
-  };
-
   useEffect(() => {
     if (isDelete) {
       document.body.style.overflow = "hidden";
@@ -115,11 +110,7 @@ const ContentCard = ({ project }) => {
         </div>
       </div>
       {isDelete && (
-        <DeleteDialog
-          setIsDelete={setIsDelete}
-          handleDelete={handleDelete}
-          projectId={project._id}
-        />
+        <DeleteDialog setIsDelete={setIsDelete} projectId={project._id} />
       )}
     </div>
   );
