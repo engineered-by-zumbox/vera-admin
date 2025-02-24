@@ -1,6 +1,7 @@
 import { useFormatDate } from "@/hooks/useFormatDate";
-import { useDeleteNewsletter, useDeleteProject } from "@/services/mutation";
+import { useDeleteNewsletter } from "@/services/mutation";
 import { Loader2 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
@@ -79,7 +80,9 @@ const NewsletterCard = ({ newsletter }) => {
   }, [isDelete]);
   return (
     <div className="relative flex-shrink-0 max-w-[303px] bg-white min-h-[381px] rounded-3xl p-4">
-      <img
+      <Image
+        width={300}
+        height={123}
         src={newsletter.imageUrl}
         alt="project"
         className="w-full h-[123px] rounded-3xl object-cover"

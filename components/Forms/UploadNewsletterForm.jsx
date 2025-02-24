@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useOneNewsletter } from "@/services/queries";
 import toast from "react-hot-toast";
 import { Loader2 } from "lucide-react";
+import Image from "next/image";
 
 const UploadNewsletterForm = ({ id, action }) => {
   const fileInputRef = useRef();
@@ -124,7 +125,7 @@ const UploadNewsletterForm = ({ id, action }) => {
         ...prev,
         imageUrl: file,
       }));
-      console.log("done")
+      console.log("done");
     }
   };
 
@@ -172,7 +173,9 @@ const UploadNewsletterForm = ({ id, action }) => {
         >
           {formData.imageUrl ? (
             <div className="relative">
-              <img
+              <Image
+                width={1500}
+                height={230}
                 src={
                   typeof formData.imageUrl === "string"
                     ? formData.imageUrl

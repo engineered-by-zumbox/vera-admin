@@ -8,6 +8,7 @@ import { useOneProject } from "@/services/queries";
 import { Loader2 } from "lucide-react";
 import { getImageSrc } from "@/lib/utils";
 import toast from "react-hot-toast";
+import Image from "next/image";
 
 const ProjectForm = ({ id, action }) => {
   const fileInputRef = useRef();
@@ -177,7 +178,7 @@ const ProjectForm = ({ id, action }) => {
               onChange={handleChange}
               className="input"
               placeholder="Project Description (Optional)"
-              rows={4}
+              rows={8}
             />
           </div>
           <div>
@@ -239,7 +240,9 @@ const ProjectForm = ({ id, action }) => {
               className="bg-white rounded-lg p-4 flex items-start gap-4"
             >
               <div className="w-24 h-24 relative flex-shrink-0">
-                <img
+                <Image
+                  width={100}
+                  height={100}
                   src={getImageSrc(image.url)}
                   alt="Preview"
                   className="w-full h-full object-cover rounded-lg"
