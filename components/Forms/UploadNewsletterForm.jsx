@@ -174,7 +174,7 @@ const UploadNewsletterForm = ({ id, action }) => {
           {formData.imageUrl ? (
             <div className="relative">
               <Image
-                width={1500}
+                width={700}
                 height={230}
                 src={
                   typeof formData.imageUrl === "string"
