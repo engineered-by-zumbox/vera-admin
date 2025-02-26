@@ -1,10 +1,38 @@
 import { useFormatDate } from "@/hooks/useFormatDate";
 import { useDeleteNewsletter } from "@/services/mutation";
-import { Loader2 } from "lucide-react";
+import { Loader2, Check } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+
+const useToggleNewsletterActive = () => {
+  const toggleActive = async ({ id }) => {
+    try {
+      const response = await fetch("/api/newsletter-campaigns/activate", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+
+        },
+        body: JSON.stringify({ campaignId: id }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update status");
+      }
+
+      return await response.json();
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  return {
+    trigger: toggleActive,
+  };
+};
 
 const DeleteDialog = ({ setIsDelete, newsletterId }) => {
   const { trigger, isMutating, error } = useDeleteNewsletter();
@@ -70,6 +98,28 @@ const DeleteDialog = ({ setIsDelete, newsletterId }) => {
 
 const NewsletterCard = ({ newsletter }) => {
   const [isDelete, setIsDelete] = useState(false);
+  const [isActive, setIsActive] = useState(newsletter.isActive);
+  const [isToggling, setIsToggling] = useState(false);
+  const { trigger: toggleActive } = useToggleNewsletterActive();
+
+  const handleToggleActive = async () => {
+    try {
+      setIsToggling(true);
+      const newState = !isActive;
+      await toggleActive({
+        id: newsletter._id,
+      });
+      setIsActive(newState);
+      toast.success(
+        newState ? "Newsletter activated" : "Newsletter deactivated"
+      );
+    } catch (error) {
+      toast.error("Failed to update newsletter status");
+      console.error("Error toggling active status:", error);
+    } finally {
+      setIsToggling(false);
+    }
+  };
 
   useEffect(() => {
     if (isDelete) {
@@ -78,6 +128,7 @@ const NewsletterCard = ({ newsletter }) => {
       document.body.style.overflow = "auto";
     }
   }, [isDelete]);
+
   return (
     <div className="relative flex-shrink-0 max-w-[303px] bg-white min-h-[381px] rounded-3xl p-4">
       <Image
@@ -96,7 +147,36 @@ const NewsletterCard = ({ newsletter }) => {
         </p>
       </div>
       <p className="line-clamp-2">{newsletter.message}</p>
-      <div className="mt-4 myFlex gap-5 right-4 absolute bottom-4">
+
+      {/* Status indicator */}
+      <div className="absolute top-4 right-4 bg-white rounded-full shadow px-2 py-1 text-xs font-medium">
+        {isActive ? (
+          <span className="text-green-600 flex items-center">
+            <Check className="w-3 h-3 mr-1" />
+            Active
+          </span>
+        ) : (
+          <span className="text-gray-500">Inactive</span>
+        )}
+      </div>
+
+      {/* Action buttons */}
+      <div className="mt-4 myFlex gap-3 right-4 absolute bottom-4">
+        <button
+          className={`text-sm font-semibold ${
+            isActive ? "text-amber-600" : "text-emerald-600"
+          }`}
+          onClick={handleToggleActive}
+          disabled={isToggling}
+        >
+          {isToggling ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : isActive ? (
+            "Deactivate"
+          ) : (
+            "Activate"
+          )}
+        </button>
         <Link
           href={`/newsletter/edit-${newsletter._id}`}
           className="text-[#9E8437] font-semibold"
@@ -110,6 +190,7 @@ const NewsletterCard = ({ newsletter }) => {
           Delete
         </button>
       </div>
+
       {isDelete && (
         <DeleteDialog setIsDelete={setIsDelete} newsletterId={newsletter._id} />
       )}
