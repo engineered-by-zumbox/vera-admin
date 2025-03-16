@@ -118,6 +118,17 @@ function ProjectForm({ id, action }) {
     }
   }, [success, id, resetForm]);
 
+  useEffect(() => {
+    return () => {
+      formData.images.forEach((img) => {
+        if (img.previewUrl) {
+          URL.revokeObjectURL(img.previewUrl);
+        }
+      });
+    };
+  }, [formData.images]);
+  
+
   // Set form data when project data is loaded (edit mode)
   useEffect(() => {
     if (projectData) {
@@ -177,6 +188,34 @@ function ProjectForm({ id, action }) {
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
       handleFilesUpload(files);
+    }
+  };
+
+  const compressImage = async (file, onProgress) => {
+    // 🔹 Skip compression if file is already small (< 500KB)
+    if (file.size < 500 * 1024) {
+      return { compressedFile: file, previewUrl: URL.createObjectURL(file) };
+    }
+
+    const options = {
+      maxSizeMB: 1,
+      maxWidthOrHeight: 2000,
+      useWebWorker: true,
+      initialQuality: 0.9,
+      onProgress: (percent) => {
+        if (onProgress) onProgress(percent);
+      },
+    };
+
+    try {
+      const compressedFile = await imageCompression(file, options);
+      return {
+        compressedFile,
+        previewUrl: URL.createObjectURL(compressedFile),
+      };
+    } catch (error) {
+      console.error("Image compression error:", error);
+      return { compressedFile: file, previewUrl: URL.createObjectURL(file) };
     }
   };
 
@@ -341,7 +380,7 @@ function ProjectForm({ id, action }) {
 
         {/* Image Preview Section */}
         <div className="mt-6 space-y-4">
-          {formData.images &&
+          {formData.images && formData.images.length > 0 ? (
             formData.images.map((image, index) => (
               <ImagePreviewItem
                 key={image.id || index}
@@ -349,7 +388,10 @@ function ProjectForm({ id, action }) {
                 onCaptionChange={handleCaptionChange}
                 onDelete={(id) => handleDeleteImage(id, "multi")}
               />
-            ))}
+            ))
+          ) : (
+            <p className="text-gray-500">No images uploaded.</p> // Show fallback text
+          )}
         </div>
       </div>
 
