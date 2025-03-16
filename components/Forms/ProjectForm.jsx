@@ -42,6 +42,8 @@ const ImagePreviewItem = memo(({ image, onCaptionChange, onDelete }) => {
   );
 });
 
+ImagePreviewItem.displayName = "ImagePreviewItem";
+
 const ProjectForm = ({ id, action }) => {
   const fileInputRef = useRef();
   const dropZoneRef = useRef();
@@ -51,7 +53,12 @@ const ProjectForm = ({ id, action }) => {
     data,
     isLoading: projectLoading,
     error: projectError,
-  } = id ? useOneProject(id) : { data: null, isLoading: false, error: null };
+  } = useOneProject(id || ""); // Pass empty string if id is undefined
+
+  // Use these variables in your component logic
+  const projectData = id ? data : null;
+  const isProjectLoading = id ? projectLoading : false;
+  const projectLoadingError = id ? projectError : null;
 
   // Drag and drop state management
   const [isDragging, setIsDragging] = useState(false);
@@ -103,7 +110,7 @@ const ProjectForm = ({ id, action }) => {
 
   // Set form data when project data is loaded (edit mode)
   useEffect(() => {
-    if (data) {
+    if (projectData) {
       setFormData({
         name: data.name || "",
         description: data.description || "",
@@ -195,7 +202,7 @@ const ProjectForm = ({ id, action }) => {
   };
 
   // Show loading state while fetching project in edit mode
-  if (id && projectLoading) {
+  if (isProjectLoading) {
     return (
       <div className="h-[40dvh] myFlex justify-center">
         <Loader2
@@ -207,7 +214,7 @@ const ProjectForm = ({ id, action }) => {
   }
 
   // Show error state if project fetch fails
-  if (id && projectError) {
+  if (projectLoadingError) {
     return (
       <div className="h-[40dvh] text-red-500 myFlex justify-center">
         Failed to load project. Please try again later.
