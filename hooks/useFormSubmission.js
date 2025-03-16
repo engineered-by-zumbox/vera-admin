@@ -1,4 +1,6 @@
+import imageCompression from "browser-image-compression";
 import { useCallback, useState } from "react";
+import toast from "react-hot-toast";
 
 const useFormSubmission = (config) => {
   const { endpoint, defaultValues, validate, id } = config;
@@ -6,8 +8,39 @@ const useFormSubmission = (config) => {
   // State for form data, loading, error, and success
   const [formData, setFormData] = useState(defaultValues || {});
   const [isLoading, setLoading] = useState(false);
+  const [compressingImages, setCompressingImages] = useState(false);
+  const [compressionProgress, setCompressionProgress] = useState(0); // Tracks per-image progress
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+
+  const compressImage = async (file, onProgress) => {
+    // 🔹 Skip compression if file is already small (< 500KB)
+    if (file.size < 500 * 1024) {
+      return { compressedFile: file, previewUrl: URL.createObjectURL(file) };
+    }
+
+    const options = {
+      maxSizeMB: 1,
+      maxWidthOrHeight: 2000,
+      useWebWorker: true,
+      initialQuality: 0.9,
+      onProgress: (percent) => {
+        if (onProgress) onProgress(percent);
+      },
+    };
+
+    try {
+      const compressedFile = await imageCompression(file, options);
+      return {
+        compressedFile,
+        previewUrl: URL.createObjectURL(compressedFile),
+      };
+    } catch (error) {
+      console.error("Image compression error:", error);
+      return { compressedFile: file, previewUrl: URL.createObjectURL(file) };
+    }
+  };
 
   // Handle input changes
   const handleChange = (e) => {
@@ -54,33 +87,55 @@ const useFormSubmission = (config) => {
   };
 
   // Handle multiple image uploads (with captions)
-  const handleMultiImageChange = (e) => {
+  const handleMultiImageChange = async (e) => {
     const files = e.target.files;
-    if (files) {
-      const validFiles = Array.from(files).filter((file) => {
+    if (!files) return;
+
+    setCompressingImages(true); // Start compression indicator
+
+    let totalFiles = files.length;
+    let totalProgress = 0;
+
+    const compressedImages = await Promise.all(
+      Array.from(files).map(async (file, index) => {
         if (!file.type.startsWith("image/")) {
-          alert("Please upload a valid image file (PNG, JPEG, etc.).");
-          return false;
+          toast.error("Invalid file format. Please upload an image.");
+          return null;
         }
         if (file.size > 20 * 1024 * 1024) {
-          alert("File size must be less than 20MB");
-          return false;
+          toast.error("File must be less than 20MB");
+          return null;
         }
-        return true;
-      });
 
-      if (validFiles.length > 0) {
-        const newImages = validFiles.map((file) => ({
-          url: file, // Ensures a file object is always assigned
+        // 🔹 Track progress for all files
+        const onProgress = (percent) => {
+          totalProgress = ((index + percent / 100) / totalFiles) * 100;
+          setCompressionProgress(Math.round(totalProgress));
+        };
+
+        const { compressedFile, previewUrl } = await compressImage(
+          file,
+          onProgress
+        );
+
+        return {
+          url: compressedFile,
+          previewUrl,
           caption: "",
           id: `new-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        }));
+        };
+      })
+    );
 
-        setFormData((prev) => ({
-          ...prev,
-          images: [...(prev.images || []), ...newImages],
-        }));
-      }
+    setCompressingImages(false); // End compression indicator
+    setCompressionProgress(0); // Reset progress
+
+    const filteredImages = compressedImages.filter((img) => img !== null);
+    if (filteredImages.length > 0) {
+      setFormData((prev) => ({
+        ...prev,
+        images: [...(prev.images || []), ...filteredImages],
+      }));
     }
   };
 
@@ -126,6 +181,7 @@ const useFormSubmission = (config) => {
   const resetForm = () => {
     setFormData(defaultValues || {});
     setError(null);
+    setUploadProgress(0);
   };
 
   const handleSubmit = async (e) => {
@@ -135,6 +191,7 @@ const useFormSubmission = (config) => {
       const validationError = validate(formData);
       if (validationError) {
         setError(validationError);
+        toast.error(validationError);
         return;
       }
     }
@@ -142,20 +199,20 @@ const useFormSubmission = (config) => {
     setLoading(true);
     setError(null);
     setSuccess(false);
+    setUploadProgress(0); // Reset progress
 
     try {
       let requestBody;
       let headers = { "Content-Type": "application/json" }; // Default headers
 
-      // Check if there's either a single image or multiple images
       const hasSingleImage = formData.imageUrl;
       const hasMultipleImages = formData.images && formData.images.length > 0;
 
       if (hasSingleImage || hasMultipleImages) {
-        // Use FormData for any request with images
+        // 🔹 Use FormData for requests with images
         requestBody = new FormData();
 
-        // Add basic fields
+        // Add non-image fields
         Object.keys(formData).forEach((key) => {
           if (key !== "imageUrl" && key !== "images" && formData[key]) {
             requestBody.append(key, formData[key]);
@@ -163,17 +220,15 @@ const useFormSubmission = (config) => {
         });
 
         if (hasSingleImage) {
-          // Handle single image
+          // Handle single image upload
           if (formData.imageUrl instanceof File) {
             requestBody.append("image", formData.imageUrl);
           } else if (typeof formData.imageUrl === "string" && id) {
-            // If it's an update and the image is a URL, pass it as is
             requestBody.append("existingImageUrl", formData.imageUrl);
           }
         } else if (hasMultipleImages) {
           // Handle multiple images
           if (id) {
-            // Handle update case
             const existingImages = formData.images.filter(
               (img) => !(img.url instanceof File)
             );
@@ -185,29 +240,59 @@ const useFormSubmission = (config) => {
             const newImages = formData.images.filter(
               (img) => img.url instanceof File
             );
-            newImages.forEach((img, index) => {
+            newImages.forEach((img) => {
               requestBody.append("newImages", img.url);
               requestBody.append("newCaptions", img.caption || "");
             });
           } else {
-            // Handle create case
-            formData.images.forEach((img, index) => {
+            formData.images.forEach((img) => {
               requestBody.append("images", img.url);
               requestBody.append("captions", img.caption || "");
             });
           }
         }
-      } else {
-        // Use JSON for requests without images
-        requestBody = JSON.stringify(formData);
-        headers = { "Content-Type": "application/json" };
+
+        // 🔹 Track Upload Progress with XMLHttpRequest
+        const xhr = new XMLHttpRequest();
+        xhr.open(id ? "PUT" : "POST", endpoint);
+        xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percent = Math.round((event.loaded / event.total) * 100);
+            setUploadProgress(percent);
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status === 200) {
+            toast.success("Upload complete!");
+            setSuccess(true);
+            setUploadProgress(100); // Mark completion
+          } else {
+            toast.error("Upload failed!");
+          }
+          setLoading(false);
+        };
+
+        xhr.onerror = () => {
+          toast.error("An error occurred during upload.");
+          setLoading(false);
+        };
+
+        xhr.send(requestBody);
+        return;
       }
+
+      // 🔹 For Non-Image Submissions (Text Only)
+      requestBody = JSON.stringify(formData);
+      headers = { "Content-Type": "application/json" };
 
       const response = await fetch(endpoint, {
         method: id ? "PUT" : "POST",
         credentials: "include",
         body: requestBody,
-        headers: hasSingleImage || hasMultipleImages ? {} : headers, // Only set headers for JSON requests
+        headers,
       });
 
       if (!response.ok) {
@@ -215,10 +300,7 @@ const useFormSubmission = (config) => {
         throw new Error(errorData?.error || "Failed to submit form");
       }
 
-      const data = await response.json();
       setSuccess(true);
-
-      return data;
     } catch (err) {
       console.error("Form submission error:", err);
       setError(err.message || "An error occurred while submitting the form");
@@ -237,6 +319,11 @@ const useFormSubmission = (config) => {
     handleImageChange,
     handleDeleteImage,
     handleCaptionChange,
+    compressingImages,
+    compressionProgress,
+    uploadProgress,
+    setCompressingImages,
+    setCompressionProgress,
     error,
     success,
     resetForm,

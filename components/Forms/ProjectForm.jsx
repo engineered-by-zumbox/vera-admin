@@ -9,55 +9,50 @@ import { Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import Image from "next/image";
 
-const ImagePreviewItem = memo(
-  ({ image, onCaptionChange, previewUrls, onDelete }) => {
-    // Determine the proper image src
-    const imageSrc =
-      previewUrls[image.id] ||
-      (typeof image.url === "string" ? image.url : null);
+const ImagePreviewItem = memo(({ image, onCaptionChange, onDelete }) => {
+  // Ensure preview URL is used
+  const imageSrc =
+    image.previewUrl ||
+    (image.url instanceof File ? URL.createObjectURL(image.url) : image.url);
 
-    return (
-      <div className="bg-white rounded-lg p-4 flex items-start gap-4">
-        <div className="w-24 h-24 relative flex-shrink-0">
-          {imageSrc && (
-            <Image
-              width={100}
-              height={100}
-              src={imageSrc}
-              alt="Preview"
-              className="w-full h-full object-cover rounded-lg"
-            />
-          )}
-        </div>
-        <div className="flex-grow">
-          <input
-            type="text"
-            value={image.caption || ""}
-            onChange={(e) => onCaptionChange(image.id, e.target.value)}
-            className="input"
-            placeholder="Add a caption for this image"
+  return (
+    <div className="bg-white rounded-lg p-4 flex items-start gap-4">
+      <div className="w-24 h-24 relative flex-shrink-0">
+        {imageSrc && (
+          <Image
+            width={100}
+            height={100}
+            src={imageSrc}
+            alt="Preview"
+            className="w-full h-full object-cover rounded-lg"
           />
-        </div>
-        <button
-          onClick={() => onDelete(image.id)}
-          type="button"
-          className="text-red-500 hover:bg-red-50 rounded-full p-2"
-        >
-          <X strokeWidth={1.2} size={20} />
-        </button>
+        )}
       </div>
-    );
-  }
-);
+      <div className="flex-grow">
+        <input
+          type="text"
+          value={image.caption || ""}
+          onChange={(e) => onCaptionChange(image.id, e.target.value)}
+          className="input"
+          placeholder="Add a caption for this image"
+        />
+      </div>
+      <button
+        onClick={() => onDelete(image.id)}
+        type="button"
+        className="text-red-500 hover:bg-red-50 rounded-full p-2"
+      >
+        <X strokeWidth={1.2} size={20} />
+      </button>
+    </div>
+  );
+});
 
 ImagePreviewItem.displayName = "ImagePreviewItem";
 
 function ProjectForm({ id, action }) {
   const fileInputRef = useRef();
   const dropZoneRef = useRef();
-  // Move previewUrls state to a ref to prevent re-renders
-  const previewUrlsRef = useRef({});
-  const [previewUrls, setPreviewUrls] = useState({});
 
   // Only fetch project data if we have an ID (edit mode)
   const {
@@ -83,6 +78,11 @@ function ProjectForm({ id, action }) {
     handleImageChange,
     handleDeleteImage,
     handleCaptionChange,
+    compressingImages,
+    compressionProgress,
+    uploadProgress,
+    setCompressingImages,
+    setCompressionProgress,
     resetForm,
     isLoading,
     error,
@@ -106,39 +106,6 @@ function ProjectForm({ id, action }) {
       return null;
     },
   });
-
-  // Update the useEffect for handling preview URLs
-  useEffect(() => {
-    // Track which URLs we need to create or keep
-    const existingPreviews = { ...previewUrlsRef.current };
-    const newPreviews = {};
-
-    // Create new preview URLs only for File objects
-    formData.images.forEach((img) => {
-      if (img.url instanceof File) {
-        // Check if we already have a preview URL for this image
-        if (!existingPreviews[img.id]) {
-          newPreviews[img.id] = URL.createObjectURL(img.url);
-        } else {
-          // Keep the existing preview URL
-          newPreviews[img.id] = existingPreviews[img.id];
-          delete existingPreviews[img.id]; // Remove from the tracking object
-        }
-      }
-    });
-
-    // Revoke any object URLs that are no longer needed
-    Object.values(existingPreviews).forEach(URL.revokeObjectURL);
-
-    // Update our ref and state
-    previewUrlsRef.current = newPreviews;
-    setPreviewUrls(newPreviews);
-
-    // Cleanup function to revoke all URLs when component unmounts
-    return () => {
-      Object.values(newPreviews).forEach(URL.revokeObjectURL);
-    };
-  }, [formData.images]); // Only run when images array changes
 
   // Handle success message and form reset
   useEffect(() => {
@@ -215,32 +182,48 @@ function ProjectForm({ id, action }) {
   };
 
   // Process dropped files
-  const handleFilesUpload = (files) => {
-    const validFiles = Array.from(files).filter((file) => {
-      if (!file.type.startsWith("image/")) {
-        toast.error("Please upload an image file");
-        return false;
-      }
-      if (file.size > 20 * 1024 * 1024) {
-        toast.error("File size must be less than 20MB");
-        return false;
-      }
-      return true;
-    });
+  const handleFilesUpload = async (files) => {
+    setCompressingImages(true);
 
-    if (validFiles.length > 0) {
-      const newImages = validFiles.map((file) => ({
-        url: file,
-        caption: "",
-        id: `new-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+    const compressedImages = await Promise.all(
+      Array.from(files).map(async (file) => {
+        if (!file.type.startsWith("image/")) {
+          toast.error("Invalid file format. Please upload an image.");
+          return null;
+        }
+        if (file.size > 20 * 1024 * 1024) {
+          toast.error("File must be less than 20MB");
+          return null;
+        }
+
+        // 🔹 Check if the file is already compressed
+        const isAlreadyCompressed = formData.images.some(
+          (img) => img.url === file
+        );
+        if (isAlreadyCompressed) {
+          return null;
+        }
+
+        const { compressedFile, previewUrl } = await compressImage(file);
+
+        return {
+          url: compressedFile,
+          previewUrl,
+          caption: "",
+          id: `new-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        };
+      })
+    );
+
+    setCompressingImages(false);
+    setCompressionProgress(0);
+
+    const filteredImages = compressedImages.filter((img) => img !== null);
+    if (filteredImages.length > 0) {
+      setFormData((prev) => ({
+        ...prev,
+        images: [...(prev.images || []), ...filteredImages],
       }));
-
-      setFormData((prev) => {
-        const updatedImages = prev.images
-          ? [...prev.images, ...newImages]
-          : newImages;
-        return { ...prev, images: updatedImages };
-      });
     }
   };
 
@@ -350,12 +333,18 @@ function ProjectForm({ id, action }) {
           </div>
         </div>
 
+        {/**Compressing Image ux */}
+        {compressingImages && (
+          <div className="flex items-center justify-center min-h-[150px] font-medium opacity-90">
+            Compressing Images {compressionProgress}%
+          </div>
+        )}
+
         {/* Image Preview Section */}
         <div className="mt-6 space-y-4">
           {formData.images &&
             formData.images.map((image, index) => (
               <ImagePreviewItem
-                previewUrls={previewUrls}
                 key={image.id || index}
                 image={image}
                 onCaptionChange={handleCaptionChange}
@@ -375,7 +364,7 @@ function ProjectForm({ id, action }) {
           {isLoading ? (
             <div className="myFlex gap-2">
               <Loader2 className="w-4 h-4 animate-spin" />
-              Uploading...
+              Uploading {uploadProgress}%...
             </div>
           ) : (
             "Upload Project"
@@ -392,7 +381,7 @@ function ProjectForm({ id, action }) {
               {isLoading ? (
                 <div className="myFlex gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Saving...
+                  Saving {uploadProgress}%...
                 </div>
               ) : (
                 "Save changes"
