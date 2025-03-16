@@ -51,40 +51,14 @@ ImagePreviewItem.displayName = "ImagePreviewItem";
 
 function ProjectForm({ id, action }) {
   const fileInputRef = useRef();
+  const dragCounter = useRef(0);
   const dropZoneRef = useRef();
 
   // Only fetch project data if we have an ID (edit mode)
   const [projectData, setProjectData] = useState(null);
   const [projectLoading, setProjectLoading] = useState(false);
   const [projectError, setProjectError] = useState(null);
-
-  // Fetch project data when ID exists
-  useEffect(() => {
-    if (!id) return;
-
-    const fetchProject = async () => {
-      setProjectLoading(true);
-      setProjectError(null);
-
-      try {
-        const response = await fetch(`/api/projects/${id}`);
-        if (!response.ok) throw new Error("Failed to fetch project data");
-
-        const data = await response.json();
-        setProjectData(data);
-      } catch (error) {
-        setProjectError(error.message);
-      } finally {
-        setProjectLoading(false);
-      }
-    };
-
-    fetchProject();
-  }, [id]);
-
-  // Drag and drop state management
   const [isDragging, setIsDragging] = useState(false);
-  const dragCounter = useRef(0);
 
   const {
     formData,
@@ -133,12 +107,31 @@ function ProjectForm({ id, action }) {
   }, [success]);
 
   useEffect(() => {
+    let isMounted = true;
+
+    const fetchProject = async () => {
+      try {
+        const response = await fetch(`/api/projects/${id}`);
+        if (!response.ok) throw new Error("Failed to fetch project data");
+
+        const data = await response.json();
+        if (isMounted) setProjectData(data); // Only set state if mounted
+      } catch (error) {
+        if (isMounted) setProjectError(error.message);
+      }
+    };
+
+    if (id) fetchProject();
+
     return () => {
-      // Revoke all object URLs when the component unmounts
+      isMounted = false; // Cleanup to prevent setting state after unmount
+    };
+  }, [id]);
+
+  useEffect(() => {
+    return () => {
       formData.images.forEach((img) => {
-        if (img.previewUrl) {
-          URL.revokeObjectURL(img.previewUrl);
-        }
+        if (img.previewUrl) URL.revokeObjectURL(img.previewUrl);
       });
     };
   }, [formData.images]);
@@ -160,7 +153,7 @@ function ProjectForm({ id, action }) {
           : [],
       });
     }
-  }, [projectData, setFormData]);
+  }, [projectData]);
 
   // File input handler
   const handleButtonClick = () => {
@@ -320,8 +313,8 @@ function ProjectForm({ id, action }) {
 
         {/* Image Preview Section */}
         <div className="mt-6 space-y-4">
-          {formData.images && formData.images.length > 0 ? (
-            formData.images.map((image, index) => (
+          {formData?.images && formData?.images?.length > 0 ? (
+            formData?.images.map((image, index) => (
               <ImagePreviewItem
                 key={image.id || index}
                 image={image}
