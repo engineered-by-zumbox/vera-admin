@@ -5,19 +5,19 @@ import Spinner from "@/components/Spinner";
 import { useAuth } from "@/hooks/useAuth";
 
 const AdminLayout = ({ children }) => {
-  const { authenticating, isAuthenticated } = useAuth();
+  // const { authenticating, isAuthenticated } = useAuth();
 
-  if (authenticating) {
-    return (
-      <div className="flex justify-center min-h-[60vh] items-center mt-10">
-        <Spinner />
-      </div>
-    );
-  }
+  // if (authenticating) {
+  //   return (
+  //     <div className="flex justify-center min-h-[60vh] items-center mt-10">
+  //       <Spinner />
+  //     </div>
+  //   );
+  // }
 
-  if (!isAuthenticated) {
-    return null;
-  }
+  // if (!isAuthenticated) {
+  //   return null;
+  //}
 
   return (
     <>

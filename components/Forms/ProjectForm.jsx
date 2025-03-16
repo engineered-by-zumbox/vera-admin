@@ -10,50 +10,66 @@ import { getImageSrc } from "@/lib/utils";
 import toast from "react-hot-toast";
 import Image from "next/image";
 
-const ImagePreviewItem = memo(({ image, onCaptionChange, onDelete }) => {
-  return (
-    <div className="bg-white rounded-lg p-4 flex items-start gap-4">
-      <div className="w-24 h-24 relative flex-shrink-0">
-        <Image
-          width={100}
-          height={100}
-          src={getImageSrc(image.url)}
-          alt="Preview"
-          className="w-full h-full object-cover rounded-lg"
-        />
+const ImagePreviewItem = memo(
+  ({ image, onCaptionChange, previewUrls, onDelete }) => {
+    // Determine the proper image src
+    const imageSrc =
+      previewUrls[image.id] ||
+      (typeof image.url === "string" ? image.url : null);
+
+    return (
+      <div className="bg-white rounded-lg p-4 flex items-start gap-4">
+        <div className="w-24 h-24 relative flex-shrink-0">
+          {imageSrc && (
+            <Image
+              width={100}
+              height={100}
+              src={imageSrc}
+              alt="Preview"
+              className="w-full h-full object-cover rounded-lg"
+            />
+          )}
+        </div>
+        <div className="flex-grow">
+          <input
+            type="text"
+            value={image.caption || ""}
+            onChange={(e) => onCaptionChange(image.id, e.target.value)}
+            className="input"
+            placeholder="Add a caption for this image"
+          />
+        </div>
+        <button
+          onClick={() => onDelete(image.id)}
+          type="button"
+          className="text-red-500 hover:bg-red-50 rounded-full p-2"
+        >
+          <X strokeWidth={1.2} size={20} />
+        </button>
       </div>
-      <div className="flex-grow">
-        <input
-          type="text"
-          value={image.caption || ""}
-          onChange={(e) => onCaptionChange(image.id, e.target.value)}
-          className="input"
-          placeholder="Add a caption for this image"
-        />
-      </div>
-      <button
-        onClick={() => onDelete(image.id)}
-        type="button"
-        className="text-red-500 hover:bg-red-50 rounded-full p-2"
-      >
-        <X strokeWidth={1.2} size={20} />
-      </button>
-    </div>
-  );
-});
+    );
+  }
+);
 
 ImagePreviewItem.displayName = "ImagePreviewItem";
 
-const ProjectForm = ({ id, action }) => {
+function ProjectForm({ id, action }) {
   const fileInputRef = useRef();
   const dropZoneRef = useRef();
+  // Move previewUrls state to a ref to prevent re-renders
+  const previewUrlsRef = useRef({});
+  const [previewUrls, setPreviewUrls] = useState({});
 
   // Only fetch project data if we have an ID (edit mode)
-  const {
-    data,
-    isLoading: projectLoading,
-    error: projectError,
-  } = useOneProject(id || ""); // Pass empty string if id is undefined
+  // const {
+  //   data,
+  //   isLoading: projectLoading,
+  //   error: projectError,
+  // } = useOneProject(id || ""); // Pass empty string if id is undefined
+
+  const [data, setData] = useState([]);
+  const [projectLoading, setProjectLoading] = useState(false);
+  const [projectError, setProjectError] = useState(null);
 
   // Use these variables in your component logic
   const projectData = id ? data : null;
@@ -96,6 +112,39 @@ const ProjectForm = ({ id, action }) => {
     },
   });
 
+  // Update the useEffect for handling preview URLs
+  useEffect(() => {
+    // Track which URLs we need to create or keep
+    const existingPreviews = { ...previewUrlsRef.current };
+    const newPreviews = {};
+
+    // Create new preview URLs only for File objects
+    formData.images.forEach((img) => {
+      if (img.url instanceof File) {
+        // Check if we already have a preview URL for this image
+        if (!existingPreviews[img.id]) {
+          newPreviews[img.id] = URL.createObjectURL(img.url);
+        } else {
+          // Keep the existing preview URL
+          newPreviews[img.id] = existingPreviews[img.id];
+          delete existingPreviews[img.id]; // Remove from the tracking object
+        }
+      }
+    });
+
+    // Revoke any object URLs that are no longer needed
+    Object.values(existingPreviews).forEach(URL.revokeObjectURL);
+
+    // Update our ref and state
+    previewUrlsRef.current = newPreviews;
+    setPreviewUrls(newPreviews);
+
+    // Cleanup function to revoke all URLs when component unmounts
+    return () => {
+      Object.values(newPreviews).forEach(URL.revokeObjectURL);
+    };
+  }, [formData.images]); // Only run when images array changes
+
   // Handle success message and form reset
   useEffect(() => {
     if (success) {
@@ -136,8 +185,12 @@ const ProjectForm = ({ id, action }) => {
   const handleDragEnter = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    dragCounter.current++;
-    setIsDragging(true);
+
+    dragCounter.current++; // First, increment the counter
+
+    if (!isDragging) {
+      setIsDragging(true);
+    }
   };
 
   const handleDragLeave = (e) => {
@@ -167,7 +220,6 @@ const ProjectForm = ({ id, action }) => {
   };
 
   // Process dropped files
-  // Updated handleFilesUpload function in ProjectForm.jsx
   const handleFilesUpload = (files) => {
     const validFiles = Array.from(files).filter((file) => {
       if (!file.type.startsWith("image/")) {
@@ -189,14 +241,10 @@ const ProjectForm = ({ id, action }) => {
       }));
 
       setFormData((prev) => {
-        // Make sure prev.images is treated as an array
-        const currentImages = Array.isArray(prev.images)
-          ? [...prev.images]
-          : [];
-        return {
-          ...prev,
-          images: [...currentImages, ...newImages],
-        };
+        const updatedImages = prev.images
+          ? [...prev.images, ...newImages]
+          : newImages;
+        return { ...prev, images: updatedImages };
       });
     }
   };
@@ -294,7 +342,7 @@ const ProjectForm = ({ id, action }) => {
               type="file"
               accept="image/*"
               ref={fileInputRef}
-              onChange={handleImageChange}
+              onChange={(e) => handleImageChange(e, "multi")}
               className="hidden"
               multiple
             />
@@ -312,48 +360,12 @@ const ProjectForm = ({ id, action }) => {
           {formData.images &&
             formData.images.map((image, index) => (
               <ImagePreviewItem
-                key={image.id}
+                previewUrls={previewUrls}
+                key={image.id || index}
                 image={image}
                 onCaptionChange={handleCaptionChange}
                 onDelete={(id) => handleDeleteImage(id, "multi")}
               />
-              // <div
-              //   key={image.id || index}
-              //   className="bg-white rounded-lg p-4 flex items-start gap-4"
-              // >
-              //   <div className="w-24 h-24 relative flex-shrink-0">
-              //     <Image
-              //       width={100}
-              //       height={100}
-              //       src={getImageSrc(image.url)}
-              //       alt="Preview"
-              //       className="w-full h-full object-cover rounded-lg"
-              //     />
-              //   </div>
-              //   <div className="flex-grow">
-              //     <input
-              //       type="text"
-              //       value={image.caption || ""}
-              //       onChange={(e) => {
-              //         // Prevent default to avoid potential form submission
-              //         e.preventDefault();
-              //         handleCaptionChange(image.id, e.target.value);
-              //       }}
-              //       className="input"
-              //       placeholder="Add a caption for this image"
-              //     />
-              //   </div>
-              //   <button
-              //     onClick={(e) => {
-              //       e.stopPropagation(); // Prevent event bubbling
-              //       handleDeleteImage(image.id, "multi");
-              //     }}
-              //     type="button"
-              //     className="text-red-500 hover:bg-red-50 rounded-full p-2"
-              //   >
-              //     <X strokeWidth={1.2} size={20} />
-              //   </button>
-              // </div>
             ))}
         </div>
       </div>
@@ -403,6 +415,6 @@ const ProjectForm = ({ id, action }) => {
       )}
     </form>
   );
-};
+}
 
 export default ProjectForm;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 const useFormSubmission = (config) => {
   const { endpoint, defaultValues, validate, id } = config;
@@ -57,33 +57,35 @@ const useFormSubmission = (config) => {
   const handleMultiImageChange = (e) => {
     const files = e.target.files;
     if (files) {
-      Array.from(files).forEach((file) => {
+      const validFiles = Array.from(files).filter((file) => {
         if (!file.type.startsWith("image/")) {
           alert("Please upload a valid image file (PNG, JPEG, etc.).");
-          return;
+          return false;
         }
         if (file.size > 20 * 1024 * 1024) {
           alert("File size must be less than 20MB");
-          return;
+          return false;
         }
+        return true;
+      });
+
+      if (validFiles.length > 0) {
+        const newImages = validFiles.map((file) => ({
+          url: file, // Ensures a file object is always assigned
+          caption: "",
+          id: `new-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        }));
 
         setFormData((prev) => ({
           ...prev,
-          images: [
-            ...(prev.images || []),
-            {
-              url: file,
-              caption: "",
-              id: Date.now() + Math.random(),
-            },
-          ],
+          images: [...(prev.images || []), ...newImages],
         }));
-      });
+      }
     }
   };
 
   // Handle image caption changes
-  const handleCaptionChange = (id, caption) => {
+  const handleCaptionChange = useCallback((id, caption) => {
     setFormData((prev) => {
       const updatedImages = (prev.images || []).map((img) =>
         img.id === id ? { ...img, caption } : img
@@ -93,7 +95,7 @@ const useFormSubmission = (config) => {
         images: updatedImages,
       };
     });
-  };
+  }, []);
 
   // Handle individual image deletion (with caption)
   const handleMultiImageDelete = (id) => {
