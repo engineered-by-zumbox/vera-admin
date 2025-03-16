@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { Upload, X } from "lucide-react";
 import useFormSubmission from "@/hooks/useFormSubmission";
 import Link from "next/link";
@@ -10,16 +10,52 @@ import { getImageSrc } from "@/lib/utils";
 import toast from "react-hot-toast";
 import Image from "next/image";
 
+const ImagePreviewItem = memo(({ image, onCaptionChange, onDelete }) => {
+  return (
+    <div className="bg-white rounded-lg p-4 flex items-start gap-4">
+      <div className="w-24 h-24 relative flex-shrink-0">
+        <Image
+          width={100}
+          height={100}
+          src={getImageSrc(image.url)}
+          alt="Preview"
+          className="w-full h-full object-cover rounded-lg"
+        />
+      </div>
+      <div className="flex-grow">
+        <input
+          type="text"
+          value={image.caption || ""}
+          onChange={(e) => onCaptionChange(image.id, e.target.value)}
+          className="input"
+          placeholder="Add a caption for this image"
+        />
+      </div>
+      <button
+        onClick={() => onDelete(image.id)}
+        type="button"
+        className="text-red-500 hover:bg-red-50 rounded-full p-2"
+      >
+        <X strokeWidth={1.2} size={20} />
+      </button>
+    </div>
+  );
+});
+
 const ProjectForm = ({ id, action }) => {
   const fileInputRef = useRef();
   const dropZoneRef = useRef();
+
+  // Only fetch project data if we have an ID (edit mode)
   const {
     data,
-    isLoading: loading,
+    isLoading: projectLoading,
     error: projectError,
-  } = useOneProject(id || null);
+  } = id ? useOneProject(id) : { data: null, isLoading: false, error: null };
+
+  // Drag and drop state management
   const [isDragging, setIsDragging] = useState(false);
-  let dragCounter = 0; // Add counter to track drag events
+  const dragCounter = useRef(0);
 
   const {
     formData,
@@ -43,54 +79,65 @@ const ProjectForm = ({ id, action }) => {
       images: [],
     },
     validate: (formData) => {
-      if (!formData.name || !formData.images) {
-        return "Project name and images are required.";
+      if (!formData.name) {
+        return "Project name is required.";
+      }
+      if (!formData.images || formData.images.length === 0) {
+        return "At least one image is required.";
       }
       return null;
     },
   });
 
+  // Handle success message and form reset
   useEffect(() => {
     if (success) {
-      toast.success(id ? "Project updated" : "Project created");
+      toast.success(
+        id ? "Project updated successfully" : "Project created successfully"
+      );
+      if (!id) {
+        resetForm();
+      }
     }
-    if (success && !id) {
-      resetForm();
-    }
-  }, [success]);
+  }, [success, id, resetForm]);
 
+  // Set form data when project data is loaded (edit mode)
   useEffect(() => {
     if (data) {
-      setFormData((prevFormData) => ({
-        ...prevFormData,
+      setFormData({
         name: data.name || "",
         description: data.description || "",
         category: data.category || "",
-        images: data.images || null,
-      }));
+        images: Array.isArray(data.images)
+          ? data.images.map((img) => ({
+              ...img,
+              id:
+                img.id ||
+                `existing-${Math.random().toString(36).substring(2, 9)}`,
+            }))
+          : [],
+      });
     }
   }, [data, setFormData]);
 
+  // File input handler
   const handleButtonClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
+    fileInputRef.current?.click();
   };
 
+  // Drag and drop handlers
   const handleDragEnter = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    dragCounter++;
-    if (e.target === dropZoneRef.current) {
-      setIsDragging(true);
-    }
+    dragCounter.current++;
+    setIsDragging(true);
   };
 
   const handleDragLeave = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    dragCounter--;
-    if (dragCounter === 0) {
+    dragCounter.current--;
+    if (dragCounter.current === 0) {
       setIsDragging(false);
     }
   };
@@ -98,45 +145,57 @@ const ProjectForm = ({ id, action }) => {
   const handleDragOver = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.target === dropZoneRef.current) {
-      setIsDragging(true);
-    }
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-    dragCounter = 0;
+    dragCounter.current = 0;
 
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
-      Array.from(files).forEach((file) => {
-        if (!file.type.startsWith("image/")) {
-          alert("Please upload an image file");
-          return;
-        }
-        if (file.size > 20 * 1024 * 1024) {
-          alert("File size must be less than 20MB");
-          return;
-        }
+      handleFilesUpload(files);
+    }
+  };
 
-        setFormData((prev) => ({
+  // Process dropped files
+  // Updated handleFilesUpload function in ProjectForm.jsx
+  const handleFilesUpload = (files) => {
+    const validFiles = Array.from(files).filter((file) => {
+      if (!file.type.startsWith("image/")) {
+        toast.error("Please upload an image file");
+        return false;
+      }
+      if (file.size > 20 * 1024 * 1024) {
+        toast.error("File size must be less than 20MB");
+        return false;
+      }
+      return true;
+    });
+
+    if (validFiles.length > 0) {
+      const newImages = validFiles.map((file) => ({
+        url: file,
+        caption: "",
+        id: `new-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      }));
+
+      setFormData((prev) => {
+        // Make sure prev.images is treated as an array
+        const currentImages = Array.isArray(prev.images)
+          ? [...prev.images]
+          : [];
+        return {
           ...prev,
-          images: [
-            ...prev.images,
-            {
-              url: file,
-              caption: "",
-              id: Date.now() + Math.random(),
-            },
-          ],
-        }));
+          images: [...currentImages, ...newImages],
+        };
       });
     }
   };
 
-  if (id && loading)
+  // Show loading state while fetching project in edit mode
+  if (id && projectLoading) {
     return (
       <div className="h-[40dvh] myFlex justify-center">
         <Loader2
@@ -145,12 +204,16 @@ const ProjectForm = ({ id, action }) => {
         />
       </div>
     );
-  if (id && projectError)
+  }
+
+  // Show error state if project fetch fails
+  if (id && projectError) {
     return (
       <div className="h-[40dvh] text-red-500 myFlex justify-center">
-        Failed to load projects. Please try again later.
+        Failed to load project. Please try again later.
       </div>
     );
+  }
 
   return (
     <form
@@ -158,6 +221,8 @@ const ProjectForm = ({ id, action }) => {
       className="bg-[#E3E3E34D] rounded-[32px] px-6 py-10 grid gap-12"
     >
       {error && <p className="text-red-500 mb-1 text-center">{error}</p>}
+
+      {/* Project Details Section */}
       <div>
         <h3 className="text-[28px] font-bold mb-3">Project Details</h3>
         <div className="space-y-6">
@@ -165,7 +230,7 @@ const ProjectForm = ({ id, action }) => {
             <input
               type="text"
               name="name"
-              value={formData.name}
+              value={formData.name || ""}
               onChange={handleChange}
               className="input"
               placeholder="Project Name *"
@@ -174,7 +239,7 @@ const ProjectForm = ({ id, action }) => {
           <div>
             <textarea
               name="description"
-              value={formData.description}
+              value={formData.description || ""}
               onChange={handleChange}
               className="input"
               placeholder="Project Description (Optional)"
@@ -185,7 +250,7 @@ const ProjectForm = ({ id, action }) => {
             <input
               type="text"
               name="category"
-              value={formData.category}
+              value={formData.category || ""}
               onChange={handleChange}
               className="input"
               placeholder="Category (Optional)"
@@ -194,13 +259,15 @@ const ProjectForm = ({ id, action }) => {
         </div>
       </div>
 
+      {/* Image Upload Section */}
       <div>
         <h3 className="text-[28px] font-bold mb-3">Upload Images</h3>
         <p className="text-sm text-[#7B7670]">
-          Enhance your newsletter with visual content—upload your supporting
-          images here to complement and enrich your message.
+          Enhance your project with visual content—upload your supporting images
+          here to complement and enrich your message.
         </p>
 
+        {/* Drop Zone */}
         <div
           ref={dropZoneRef}
           onClick={handleButtonClick}
@@ -220,7 +287,7 @@ const ProjectForm = ({ id, action }) => {
               type="file"
               accept="image/*"
               ref={fileInputRef}
-              onChange={(e) => handleImageChange(e, "multi")}
+              onChange={handleImageChange}
               className="hidden"
               multiple
             />
@@ -233,43 +300,58 @@ const ProjectForm = ({ id, action }) => {
           </div>
         </div>
 
+        {/* Image Preview Section */}
         <div className="mt-6 space-y-4">
-          {formData.images.map((image, index) => (
-            <div
-              key={index}
-              className="bg-white rounded-lg p-4 flex items-start gap-4"
-            >
-              <div className="w-24 h-24 relative flex-shrink-0">
-                <Image
-                  width={100}
-                  height={100}
-                  src={getImageSrc(image.url)}
-                  alt="Preview"
-                  className="w-full h-full object-cover rounded-lg"
-                />
-              </div>
-              <div className="flex-grow">
-                <input
-                  type="text"
-                  value={image.caption}
-                  onChange={(e) =>
-                    handleCaptionChange(image.id, e.target.value)
-                  }
-                  className="input"
-                  placeholder="Add a caption for this image"
-                />
-              </div>
-              <button
-                onClick={() => handleDeleteImage(index, "multi")}
-                type="button"
-                className="text-red-500 hover:bg-red-50 rounded-full p-2"
-              >
-                <X strokeWidth={1.2} size={20} />
-              </button>
-            </div>
-          ))}
+          {formData.images &&
+            formData.images.map((image, index) => (
+              <ImagePreviewItem
+                key={image.id}
+                image={image}
+                onCaptionChange={handleCaptionChange}
+                onDelete={(id) => handleDeleteImage(id, "multi")}
+              />
+              // <div
+              //   key={image.id || index}
+              //   className="bg-white rounded-lg p-4 flex items-start gap-4"
+              // >
+              //   <div className="w-24 h-24 relative flex-shrink-0">
+              //     <Image
+              //       width={100}
+              //       height={100}
+              //       src={getImageSrc(image.url)}
+              //       alt="Preview"
+              //       className="w-full h-full object-cover rounded-lg"
+              //     />
+              //   </div>
+              //   <div className="flex-grow">
+              //     <input
+              //       type="text"
+              //       value={image.caption || ""}
+              //       onChange={(e) => {
+              //         // Prevent default to avoid potential form submission
+              //         e.preventDefault();
+              //         handleCaptionChange(image.id, e.target.value);
+              //       }}
+              //       className="input"
+              //       placeholder="Add a caption for this image"
+              //     />
+              //   </div>
+              //   <button
+              //     onClick={(e) => {
+              //       e.stopPropagation(); // Prevent event bubbling
+              //       handleDeleteImage(image.id, "multi");
+              //     }}
+              //     type="button"
+              //     className="text-red-500 hover:bg-red-50 rounded-full p-2"
+              //   >
+              //     <X strokeWidth={1.2} size={20} />
+              //   </button>
+              // </div>
+            ))}
         </div>
       </div>
+
+      {/* Form Actions */}
       {action === "create" ? (
         <button
           disabled={isLoading}

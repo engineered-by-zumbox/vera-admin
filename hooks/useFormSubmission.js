@@ -84,19 +84,22 @@ const useFormSubmission = (config) => {
 
   // Handle image caption changes
   const handleCaptionChange = (id, caption) => {
-    setFormData((prev) => ({
-      ...prev,
-      images: (prev.images || []).map((img) =>
+    setFormData((prev) => {
+      const updatedImages = (prev.images || []).map((img) =>
         img.id === id ? { ...img, caption } : img
-      ),
-    }));
+      );
+      return {
+        ...prev,
+        images: updatedImages,
+      };
+    });
   };
 
   // Handle individual image deletion (with caption)
-  const handleMultiImageDelete = (index) => {
+  const handleMultiImageDelete = (id) => {
     setFormData((prev) => ({
       ...prev,
-      images: prev.images.filter((_, i) => i !== index), // Remove by index
+      images: (prev.images || []).filter((img) => img.id !== id),
     }));
   };
 
