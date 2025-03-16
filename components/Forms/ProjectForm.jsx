@@ -6,7 +6,6 @@ import useFormSubmission from "@/hooks/useFormSubmission";
 import Link from "next/link";
 import { useOneProject } from "@/services/queries";
 import { Loader2 } from "lucide-react";
-import { getImageSrc } from "@/lib/utils";
 import toast from "react-hot-toast";
 import Image from "next/image";
 
@@ -61,15 +60,11 @@ function ProjectForm({ id, action }) {
   const [previewUrls, setPreviewUrls] = useState({});
 
   // Only fetch project data if we have an ID (edit mode)
-  // const {
-  //   data,
-  //   isLoading: projectLoading,
-  //   error: projectError,
-  // } = useOneProject(id || ""); // Pass empty string if id is undefined
-
-  const [data, setData] = useState([]);
-  const [projectLoading, setProjectLoading] = useState(false);
-  const [projectError, setProjectError] = useState(null);
+  const {
+    data,
+    isLoading: projectLoading,
+    error: projectError,
+  } = useOneProject(id || ""); // Pass empty string if id is undefined
 
   // Use these variables in your component logic
   const projectData = id ? data : null;
