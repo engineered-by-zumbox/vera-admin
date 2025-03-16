@@ -130,7 +130,7 @@ function ProjectForm({ id, action }) {
         resetForm();
       }
     }
-  }, [success, id, resetForm]);
+  }, [success]);
 
   useEffect(() => {
     return () => {
