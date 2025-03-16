@@ -199,20 +199,20 @@ const useFormSubmission = (config) => {
     setLoading(true);
     setError(null);
     setSuccess(false);
-    setUploadProgress(0); // Reset progress
 
     try {
       let requestBody;
       let headers = { "Content-Type": "application/json" }; // Default headers
 
+      // Check if there's either a single image or multiple images
       const hasSingleImage = formData.imageUrl;
       const hasMultipleImages = formData.images && formData.images.length > 0;
 
       if (hasSingleImage || hasMultipleImages) {
-        // 🔹 Use FormData for requests with images
+        // Use FormData for any request with images
         requestBody = new FormData();
 
-        // Add non-image fields
+        // Add basic fields
         Object.keys(formData).forEach((key) => {
           if (key !== "imageUrl" && key !== "images" && formData[key]) {
             requestBody.append(key, formData[key]);
@@ -220,15 +220,17 @@ const useFormSubmission = (config) => {
         });
 
         if (hasSingleImage) {
-          // Handle single image upload
+          // Handle single image
           if (formData.imageUrl instanceof File) {
             requestBody.append("image", formData.imageUrl);
           } else if (typeof formData.imageUrl === "string" && id) {
+            // If it's an update and the image is a URL, pass it as is
             requestBody.append("existingImageUrl", formData.imageUrl);
           }
         } else if (hasMultipleImages) {
           // Handle multiple images
           if (id) {
+            // Handle update case
             const existingImages = formData.images.filter(
               (img) => !(img.url instanceof File)
             );
@@ -240,59 +242,29 @@ const useFormSubmission = (config) => {
             const newImages = formData.images.filter(
               (img) => img.url instanceof File
             );
-            newImages.forEach((img) => {
+            newImages.forEach((img, index) => {
               requestBody.append("newImages", img.url);
               requestBody.append("newCaptions", img.caption || "");
             });
           } else {
-            formData.images.forEach((img) => {
+            // Handle create case
+            formData.images.forEach((img, index) => {
               requestBody.append("images", img.url);
               requestBody.append("captions", img.caption || "");
             });
           }
         }
-
-        // 🔹 Track Upload Progress with XMLHttpRequest
-        const xhr = new XMLHttpRequest();
-        xhr.open(id ? "PUT" : "POST", endpoint);
-        xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
-
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            const percent = Math.round((event.loaded / event.total) * 100);
-            setUploadProgress(percent);
-          }
-        };
-
-        xhr.onload = () => {
-          if (xhr.status === 200) {
-            toast.success("Upload complete!");
-            setSuccess(true);
-            setUploadProgress(100); // Mark completion
-          } else {
-            toast.error("Upload failed!");
-          }
-          setLoading(false);
-        };
-
-        xhr.onerror = () => {
-          toast.error("An error occurred during upload.");
-          setLoading(false);
-        };
-
-        xhr.send(requestBody);
-        return;
+      } else {
+        // Use JSON for requests without images
+        requestBody = JSON.stringify(formData);
+        headers = { "Content-Type": "application/json" };
       }
-
-      // 🔹 For Non-Image Submissions (Text Only)
-      requestBody = JSON.stringify(formData);
-      headers = { "Content-Type": "application/json" };
 
       const response = await fetch(endpoint, {
         method: id ? "PUT" : "POST",
         credentials: "include",
         body: requestBody,
-        headers,
+        headers: hasSingleImage || hasMultipleImages ? {} : headers, // Only set headers for JSON requests
       });
 
       if (!response.ok) {
@@ -300,7 +272,10 @@ const useFormSubmission = (config) => {
         throw new Error(errorData?.error || "Failed to submit form");
       }
 
+      const data = await response.json();
       setSuccess(true);
+
+      return data;
     } catch (err) {
       console.error("Form submission error:", err);
       setError(err.message || "An error occurred while submitting the form");
@@ -321,7 +296,6 @@ const useFormSubmission = (config) => {
     handleCaptionChange,
     compressingImages,
     compressionProgress,
-    uploadProgress,
     setCompressingImages,
     setCompressionProgress,
     error,

@@ -80,7 +80,6 @@ function ProjectForm({ id, action }) {
     handleCaptionChange,
     compressingImages,
     compressionProgress,
-    uploadProgress,
     setCompressingImages,
     setCompressionProgress,
     resetForm,
@@ -364,7 +363,7 @@ function ProjectForm({ id, action }) {
           {isLoading ? (
             <div className="myFlex gap-2">
               <Loader2 className="w-4 h-4 animate-spin" />
-              Uploading {uploadProgress}%...
+              Uploading...
             </div>
           ) : (
             "Upload Project"
@@ -381,7 +380,7 @@ function ProjectForm({ id, action }) {
               {isLoading ? (
                 <div className="myFlex gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Saving {uploadProgress}%...
+                  Saving...
                 </div>
               ) : (
                 "Save changes"
