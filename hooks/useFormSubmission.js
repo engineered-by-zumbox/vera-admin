@@ -88,54 +88,61 @@ const useFormSubmission = (config) => {
 
   // Handle multiple image uploads (with captions)
   const handleMultiImageChange = async (e) => {
-    const files = e.target.files;
-    if (!files) return;
+    try {
+      const files = e.target.files;
+      if (!files) return;
 
-    setCompressingImages(true); // Start compression indicator
+      setCompressingImages(true); // Start compression indicator
 
-    let totalFiles = files.length;
-    let totalProgress = 0;
+      let totalFiles = files.length;
+      let totalProgress = 0;
 
-    const compressedImages = await Promise.all(
-      Array.from(files).map(async (file, index) => {
-        if (!file.type.startsWith("image/")) {
-          toast.error("Invalid file format. Please upload an image.");
-          return null;
-        }
-        if (file.size > 20 * 1024 * 1024) {
-          toast.error("File must be less than 20MB");
-          return null;
-        }
+      const compressedImages = await Promise.all(
+        Array.from(files).map(async (file, index) => {
+          if (!file.type.startsWith("image/")) {
+            toast.error("Invalid file format. Please upload an image.");
+            return null;
+          }
+          if (file.size > 20 * 1024 * 1024) {
+            toast.error("File must be less than 20MB");
+            return null;
+          }
 
-        // 🔹 Track progress for all files
-        const onProgress = (percent) => {
-          totalProgress = ((index + percent / 100) / totalFiles) * 100;
-          setCompressionProgress(Math.round(totalProgress));
-        };
+          // 🔹 Track progress for all files
+          const onProgress = (percent) => {
+            totalProgress = ((index + percent / 100) / totalFiles) * 100;
+            setCompressionProgress(Math.round(totalProgress));
+          };
 
-        const { compressedFile, previewUrl } = await compressImage(
-          file,
-          onProgress
-        );
+          const { compressedFile, previewUrl } = await compressImage(
+            file,
+            onProgress
+          );
 
-        return {
-          url: compressedFile,
-          previewUrl,
-          caption: "",
-          id: `new-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        };
-      })
-    );
+          return {
+            url: compressedFile,
+            previewUrl,
+            caption: "",
+            id: `new-${Date.now()}-${Math.random()
+              .toString(36)
+              .substring(2, 9)}`,
+          };
+        })
+      );
 
-    setCompressingImages(false); // End compression indicator
-    setCompressionProgress(0); // Reset progress
-
-    const filteredImages = compressedImages.filter((img) => img !== null);
-    if (filteredImages.length > 0) {
-      setFormData((prev) => ({
-        ...prev,
-        images: [...(prev.images || []), ...filteredImages],
-      }));
+      const filteredImages = compressedImages.filter((img) => img !== null);
+      if (filteredImages.length > 0) {
+        setFormData((prev) => ({
+          ...prev,
+          images: [...(prev.images || []), ...filteredImages],
+        }));
+      }
+    } catch (error) {
+      console.error("Error compressing images:", error);
+      toast.error("Failed to compress images. Please try again.");
+    } finally {
+      setCompressingImages(false);
+      setCompressionProgress(0);
     }
   };
 
@@ -154,10 +161,16 @@ const useFormSubmission = (config) => {
 
   // Handle individual image deletion (with caption)
   const handleMultiImageDelete = (id) => {
-    setFormData((prev) => ({
-      ...prev,
-      images: (prev.images || []).filter((img) => img.id !== id),
-    }));
+    setFormData((prev) => {
+      const deletedImage = prev.images.find((img) => img.id === id);
+      if (deletedImage?.previewUrl) {
+        URL.revokeObjectURL(deletedImage.previewUrl); // Revoke the object URL
+      }
+      return {
+        ...prev,
+        images: (prev.images || []).filter((img) => img.id !== id),
+      };
+    });
   };
 
   // Generic image change handler that detects the type of upload needed
@@ -179,6 +192,13 @@ const useFormSubmission = (config) => {
   };
 
   const resetForm = () => {
+    // Revoke all object URLs before resetting the form
+    formData.images.forEach((img) => {
+      if (img.previewUrl) {
+        URL.revokeObjectURL(img.previewUrl);
+      }
+    });
+
     setFormData(defaultValues || {});
     setError(null);
     setUploadProgress(0);

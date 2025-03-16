@@ -4,7 +4,6 @@ import { memo, useEffect, useRef, useState } from "react";
 import { Upload, X } from "lucide-react";
 import useFormSubmission from "@/hooks/useFormSubmission";
 import Link from "next/link";
-import { useOneProject } from "@/services/queries";
 import { Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import Image from "next/image";
@@ -55,16 +54,33 @@ function ProjectForm({ id, action }) {
   const dropZoneRef = useRef();
 
   // Only fetch project data if we have an ID (edit mode)
-  const {
-    data,
-    isLoading: projectLoading,
-    error: projectError,
-  } = useOneProject(id || ""); // Pass empty string if id is undefined
+  const [projectData, setProjectData] = useState(null);
+  const [projectLoading, setProjectLoading] = useState(false);
+  const [projectError, setProjectError] = useState(null);
 
-  // Use these variables in your component logic
-  const projectData = id ? data : null;
-  const isProjectLoading = id ? projectLoading : false;
-  const projectLoadingError = id ? projectError : null;
+  // Fetch project data when ID exists
+  useEffect(() => {
+    if (!id) return;
+
+    const fetchProject = async () => {
+      setProjectLoading(true);
+      setProjectError(null);
+
+      try {
+        const response = await fetch(`/api/projects/${id}`);
+        if (!response.ok) throw new Error("Failed to fetch project data");
+
+        const data = await response.json();
+        setProjectData(data);
+      } catch (error) {
+        setProjectError(error.message);
+      } finally {
+        setProjectLoading(false);
+      }
+    };
+
+    fetchProject();
+  }, [id]);
 
   // Drag and drop state management
   const [isDragging, setIsDragging] = useState(false);
@@ -80,8 +96,6 @@ function ProjectForm({ id, action }) {
     handleCaptionChange,
     compressingImages,
     compressionProgress,
-    setCompressingImages,
-    setCompressionProgress,
     resetForm,
     isLoading,
     error,
@@ -120,6 +134,7 @@ function ProjectForm({ id, action }) {
 
   useEffect(() => {
     return () => {
+      // Revoke all object URLs when the component unmounts
       formData.images.forEach((img) => {
         if (img.previewUrl) {
           URL.revokeObjectURL(img.previewUrl);
@@ -127,17 +142,16 @@ function ProjectForm({ id, action }) {
       });
     };
   }, [formData.images]);
-  
 
   // Set form data when project data is loaded (edit mode)
   useEffect(() => {
     if (projectData) {
       setFormData({
-        name: data.name || "",
-        description: data.description || "",
-        category: data.category || "",
-        images: Array.isArray(data.images)
-          ? data.images.map((img) => ({
+        name: projectData.name || "",
+        description: projectData.description || "",
+        category: projectData.category || "",
+        images: Array.isArray(projectData.images)
+          ? projectData.images.map((img) => ({
               ...img,
               id:
                 img.id ||
@@ -146,7 +160,7 @@ function ProjectForm({ id, action }) {
           : [],
       });
     }
-  }, [data, setFormData]);
+  }, [projectData, setFormData]);
 
   // File input handler
   const handleButtonClick = () => {
@@ -187,86 +201,12 @@ function ProjectForm({ id, action }) {
 
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
-      handleFilesUpload(files);
-    }
-  };
-
-  const compressImage = async (file, onProgress) => {
-    // 🔹 Skip compression if file is already small (< 500KB)
-    if (file.size < 500 * 1024) {
-      return { compressedFile: file, previewUrl: URL.createObjectURL(file) };
-    }
-
-    const options = {
-      maxSizeMB: 1,
-      maxWidthOrHeight: 2000,
-      useWebWorker: true,
-      initialQuality: 0.9,
-      onProgress: (percent) => {
-        if (onProgress) onProgress(percent);
-      },
-    };
-
-    try {
-      const compressedFile = await imageCompression(file, options);
-      return {
-        compressedFile,
-        previewUrl: URL.createObjectURL(compressedFile),
-      };
-    } catch (error) {
-      console.error("Image compression error:", error);
-      return { compressedFile: file, previewUrl: URL.createObjectURL(file) };
-    }
-  };
-
-  // Process dropped files
-  const handleFilesUpload = async (files) => {
-    setCompressingImages(true);
-
-    const compressedImages = await Promise.all(
-      Array.from(files).map(async (file) => {
-        if (!file.type.startsWith("image/")) {
-          toast.error("Invalid file format. Please upload an image.");
-          return null;
-        }
-        if (file.size > 20 * 1024 * 1024) {
-          toast.error("File must be less than 20MB");
-          return null;
-        }
-
-        // 🔹 Check if the file is already compressed
-        const isAlreadyCompressed = formData.images.some(
-          (img) => img.url === file
-        );
-        if (isAlreadyCompressed) {
-          return null;
-        }
-
-        const { compressedFile, previewUrl } = await compressImage(file);
-
-        return {
-          url: compressedFile,
-          previewUrl,
-          caption: "",
-          id: `new-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        };
-      })
-    );
-
-    setCompressingImages(false);
-    setCompressionProgress(0);
-
-    const filteredImages = compressedImages.filter((img) => img !== null);
-    if (filteredImages.length > 0) {
-      setFormData((prev) => ({
-        ...prev,
-        images: [...(prev.images || []), ...filteredImages],
-      }));
+      handleImageChange({ target: { files } }, "multi"); // Use existing function
     }
   };
 
   // Show loading state while fetching project in edit mode
-  if (isProjectLoading) {
+  if (projectLoading) {
     return (
       <div className="h-[40dvh] myFlex justify-center">
         <Loader2
@@ -278,7 +218,7 @@ function ProjectForm({ id, action }) {
   }
 
   // Show error state if project fetch fails
-  if (projectLoadingError) {
+  if (projectError) {
     return (
       <div className="h-[40dvh] text-red-500 myFlex justify-center">
         Failed to load project. Please try again later.
