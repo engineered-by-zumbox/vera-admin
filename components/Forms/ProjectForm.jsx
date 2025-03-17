@@ -108,9 +108,9 @@ function ProjectForm({ id, action }) {
 
   useEffect(() => {
     let isMounted = true;
-    setProjectLoading(true);
 
     const fetchProject = async () => {
+      setProjectLoading(true);
       try {
         const response = await fetch(`/api/projects/${id}`);
         if (!response.ok) throw new Error("Failed to fetch project data");
