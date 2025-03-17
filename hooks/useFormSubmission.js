@@ -279,10 +279,10 @@ const useFormSubmission = (config) => {
           } else {
             // Handle create case
             formData.images.forEach((img) => {
-              if (img.url instanceof File) {
-                requestBody.append("images", img.url);
+              if (img.url instanceof File || img.url instanceof Blob) {
+                requestBody.append("images", img.url); // Append the image file
+                requestBody.append("captions", img.caption || ""); // Append the caption
               }
-              requestBody.append("captions", img.caption || "");
             });
           }
         }
