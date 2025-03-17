@@ -279,7 +279,9 @@ const useFormSubmission = (config) => {
           } else {
             // Handle create case
             formData.images.forEach((img) => {
-              requestBody.append("images", img.url);
+              if (img.url instanceof File) {
+                requestBody.append("images", img.url);
+              }
               requestBody.append("captions", img.caption || "");
             });
           }
