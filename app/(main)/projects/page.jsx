@@ -38,6 +38,7 @@ const ContentCardSkeleton = () => {
 const PrtojectsPage = () => {
   const { data, error, isLoading } = useProject();
   const [searchTerm, setSearchTerm] = useState("");
+  console.log(data)
 
   const filteredProjects = data?.filter((project) =>
     project.name.toLowerCase().includes(searchTerm.toLowerCase())

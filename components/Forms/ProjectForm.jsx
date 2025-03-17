@@ -108,6 +108,7 @@ function ProjectForm({ id, action }) {
 
   useEffect(() => {
     let isMounted = true;
+    setProjectLoading(true);
 
     const fetchProject = async () => {
       try {
@@ -118,6 +119,8 @@ function ProjectForm({ id, action }) {
         if (isMounted) setProjectData(data); // Only set state if mounted
       } catch (error) {
         if (isMounted) setProjectError(error.message);
+      } finally {
+        setProjectLoading(false);
       }
     };
 
