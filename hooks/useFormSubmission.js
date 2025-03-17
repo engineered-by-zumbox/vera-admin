@@ -251,24 +251,34 @@ const useFormSubmission = (config) => {
           // Handle multiple images
           if (id) {
             // Handle update case
-            const existingImages = formData.images.filter(
-              (img) => !(img.url instanceof File)
-            );
+            const existingImages = formData.images
+              .filter((img) => typeof img.url === "string" && img.url !== "") // Ensure valid URLs
+              .map((img) => ({
+                url: img.url,
+                blobId: img.blobId || img.url.split("/").pop(), // Ensure blobId exists
+                caption: img.caption || "",
+              }));
+
             requestBody.append(
               "existingImages",
               JSON.stringify(existingImages)
             );
 
             const newImages = formData.images.filter(
-              (img) => img.url instanceof File
+              (img) => img.url instanceof File || img.url instanceof Blob
             );
-            newImages.forEach((img, index) => {
-              requestBody.append("newImages", img.url);
-              requestBody.append("newCaptions", img.caption || "");
-            });
+            if (newImages.length > 0) {
+              newImages.forEach((img, index) => {
+                requestBody.append("newImages", img.url);
+                requestBody.append("newCaptions", img.caption || "");
+              });
+            } else {
+              requestBody.append("newImages", "[]"); // Ensure backend receives it
+              requestBody.append("newCaptions", "[]");
+            }
           } else {
             // Handle create case
-            formData.images.forEach((img, index) => {
+            formData.images.forEach((img) => {
               requestBody.append("images", img.url);
               requestBody.append("captions", img.caption || "");
             });
